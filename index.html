@@ -118,9 +118,12 @@
       <div id="codeBadge" class="badge" style="display:none;"></div>
     </div>
 
-    <!-- КНОПКА "ДОДАТИ ПРОДУКТ" — відкриває Web App в новій вкладці -->
+    <!-- КНОПКИ -->
     <button class="btn-orange" onclick="window.open(WEB_APP_URL, '_blank')">
-      ➕ Додати продукт у базу
+      ➕ Додати продукт
+    </button>
+    <button class="btn-primary" onclick="window.open(WEB_APP_URL + '?page=recipe', '_blank')">
+      👨‍🍳 Створити рецепт
     </button>
 
     <p style="text-align:center;font-size:12px;color:#999;margin-top:12px;">
@@ -131,39 +134,56 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const TSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
+    const FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
+    const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pubhtml?gid=303617623&single=true';
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec';
 
-    let products = [];
-    let currentProduct = null;
     let html5QrCode = null;
     let scannerRunning = false;
+    let items = [];
+    let currentItem = null;
 
-    // Завантаження продуктів
-    fetch(TSV_URL)
-      .then(r => r.text())
-      .then(text => {
-        const lines = text.trim().split('\n');
+    // Завантаження продуктів та страв
+    const foodP = fetch(FOOD_TSV).then(r => r.text()).catch(() => '');
+    const dishP = DISH_TSV ? fetch(DISH_TSV).then(r => r.text()).catch(() => '') : Promise.resolve('');
+
+    Promise.all([foodP, dishP]).then(([foodText, dishText]) => {
+      items = [];
+      if (foodText) {
+        const lines = foodText.trim().split('\n');
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split('\t');
           if (cols[0] && cols[0].trim()) {
-            products.push({
-              name: cols[0].trim(),
-              kkal: parseFloat(cols[1]) || 0,
-              prot: parseFloat(cols[2]) || 0,
-              fat: parseFloat(cols[3]) || 0,
-              carbs: parseFloat(cols[4]) || 0,
+            items.push({
+              type: 'product', name: cols[0].trim(),
+              kkal: parseFloat(cols[1]) || 0, prot: parseFloat(cols[2]) || 0,
+              fat: parseFloat(cols[3]) || 0, carbs: parseFloat(cols[4]) || 0,
               code: cols[5] ? cols[5].trim() : ''
             });
           }
         }
-        document.getElementById('loadingMsg').style.display = 'none';
-        document.getElementById('content').style.display = 'block';
-        if (products.length === 0) showToast('❌ Немає продуктів у базі', 4000);
-      })
-      .catch(err => {
-        document.getElementById('loadingMsg').textContent = '❌ Помилка завантаження: ' + err.message;
-      });
+      }
+      if (dishText) {
+        const lines = dishText.trim().split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split('\t');
+          if (cols[0] && cols[1] && cols[1].trim()) {
+            items.push({
+              type: 'dish', name: cols[1].trim(),
+              cookedWeight: parseFloat(cols[2]) || 0,
+              kkal: parseFloat(cols[3]) || 0, prot: parseFloat(cols[4]) || 0,
+              fat: parseFloat(cols[5]) || 0, carbs: parseFloat(cols[6]) || 0,
+              ingredients: cols[7] || ''
+            });
+          }
+        }
+      }
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      if (items.length === 0) showToast('❌ База порожня', 4000);
+    }).catch(err => {
+      document.getElementById('loadingMsg').textContent = '❌ Помилка: ' + err.message;
+    });
 
     // ПОШУК
     const searchInput = document.getElementById('searchInput');
@@ -185,12 +205,12 @@
       notFoundMsg.style.display = 'none';
       if (!q) {
         productList.style.display = 'none';
-        currentProduct = null;
+        currentItem = null;
         document.getElementById('resultCard').style.display = 'none';
         return;
       }
       barcodeInput.value = '';
-      const filtered = products.filter(p =>
+      const filtered = items.filter(p =>
         p.name.toLowerCase().includes(q) ||
         (p.code && p.code.includes(q))
       );
@@ -198,7 +218,7 @@
         productList.style.display = 'none';
         notFoundMsg.innerHTML = '❌ Немає в базі. <a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#2196F3;">➕ Додати</a>';
         notFoundMsg.style.display = 'block';
-        currentProduct = null;
+        currentItem = null;
         document.getElementById('resultCard').style.display = 'none';
         return;
       }
@@ -212,7 +232,8 @@
       filtered.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.name;
-        opt.textContent = p.name + (p.code ? ' [' + p.code + ']' : '');
+        const tag = p.type === 'dish' ? '[🍲] ' : '';
+        opt.textContent = tag + p.name + (p.code ? ' [' + p.code + ']' : '');
         productSelect.appendChild(opt);
       });
       productList.style.display = 'block';
@@ -220,14 +241,15 @@
 
     productSelect.addEventListener('change', () => {
       const name = productSelect.value;
-      const p = products.find(x => x.name === name);
-      if (p) selectProduct(p);
+      const p = items.find(x => x.name === name);
+      if (p) selectItem(p);
       productList.style.display = 'none';
     });
 
-    function selectProduct(p) {
-      currentProduct = p;
-      searchInput.value = p.name;
+    function selectItem(p) {
+      currentItem = p;
+      const tag = p.type === 'dish' ? '🍲 ' : '';
+      searchInput.value = tag + p.name;
       productList.style.display = 'none';
       notFoundMsg.style.display = 'none';
       barcodeInput.value = p.code || '';
@@ -248,16 +270,16 @@
       notFoundMsg.style.display = 'none';
       searchInput.value = '';
       if (!code) {
-        currentProduct = null;
+        currentItem = null;
         document.getElementById('resultCard').style.display = 'none';
         return;
       }
-      const p = products.find(x => x.code === code);
+      const p = items.find(x => x.code === code);
       if (p) {
-        selectProduct(p);
+        selectItem(p);
         showToast('✅ ' + p.name, 2000);
       } else {
-        currentProduct = null;
+        currentItem = null;
         document.getElementById('resultCard').style.display = 'none';
         notFoundMsg.innerHTML = '📷 Код: ' + code + '<br><a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#2196F3;">➕ Додати</a>';
         notFoundMsg.style.display = 'block';
@@ -298,19 +320,23 @@
 
     function updateResult() {
       const w = parseFloat(weightInput.value) || 0;
-      if (!currentProduct || w <= 0) {
+      if (!currentItem || w <= 0) {
         document.getElementById('resultCard').style.display = 'none';
         return;
       }
       const factor = w / 100;
-      document.getElementById('productName').textContent = currentProduct.name;
-      document.getElementById('resKkal').textContent = Math.round(currentProduct.kkal * factor * 10) / 10;
-      document.getElementById('resProt').textContent = Math.round(currentProduct.prot * factor * 10) / 10;
-      document.getElementById('resFat').textContent = Math.round(currentProduct.fat * factor * 10) / 10;
-      document.getElementById('resCarbs').textContent = Math.round(currentProduct.carbs * factor * 10) / 10;
+      const tag = currentItem.type === 'dish' ? '🍲 ' : '';
+      document.getElementById('productName').textContent = tag + currentItem.name;
+      document.getElementById('resKkal').textContent = Math.round(currentItem.kkal * factor * 10) / 10;
+      document.getElementById('resProt').textContent = Math.round(currentItem.prot * factor * 10) / 10;
+      document.getElementById('resFat').textContent = Math.round(currentItem.fat * factor * 10) / 10;
+      document.getElementById('resCarbs').textContent = Math.round(currentItem.carbs * factor * 10) / 10;
       const badge = document.getElementById('codeBadge');
-      if (currentProduct.code) {
-        badge.textContent = '📦 ' + currentProduct.code;
+      if (currentItem.code) {
+        badge.textContent = '📦 ' + currentItem.code;
+        badge.style.display = 'inline-block';
+      } else if (currentItem.type === 'dish') {
+        badge.textContent = '🍲 Страва';
         badge.style.display = 'inline-block';
       } else {
         badge.style.display = 'none';
