@@ -119,10 +119,10 @@
     </div>
 
     <!-- КНОПКИ -->
-    <button class="btn-orange" onclick="window.open(WEB_APP_URL, '_blank')">
+    <button class="btn-orange" onclick="window.open(WEB_APP_URL + '#add', '_blank')">
       ➕ Додати продукт
     </button>
-    <button class="btn-primary" onclick="window.open(WEB_APP_URL + '?page=recipe', '_blank')">
+    <button class="btn-primary" onclick="window.open(WEB_APP_URL + '#recipe', '_blank')">
       👨‍🍳 Створити рецепт
     </button>
 
@@ -135,7 +135,7 @@
 
   <script>
     const FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
-    const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pubhtml?gid=303617623&single=true';
+    const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=303617623&single=true&output=tsv';
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec';
 
     let html5QrCode = null;
