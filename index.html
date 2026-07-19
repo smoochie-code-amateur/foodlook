@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nutrition Manager</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5; padding: 12px; max-width: 480px;
+      margin: 0 auto; min-height: 100vh;
+    }
+    h1 { font-size: 20px; color: #333; margin-bottom: 12px; text-align: center; }
+    .card {
+      background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    label { font-size: 13px; font-weight: 600; color: #555; display: block; margin-bottom: 3px; }
+    input, select {
+      width: 100%; padding: 10px 12px; font-size: 16px; border: 1px solid #ddd;
+      border-radius: 8px; outline: none; background: #fafafa; margin-bottom: 10px;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus { border-color: #2196F3; background: #fff; }
+    button {
+      width: 100%; padding: 12px; font-size: 16px; font-weight: 600;
+      border: none; border-radius: 8px; cursor: pointer; margin-bottom: 6px;
+    }
+    .btn-primary { background: #2196F3; color: #fff; }
+    .btn-primary:hover { background: #1976D2; }
+    .btn-green { background: #4CAF50; color: #fff; }
+    .btn-green:hover { background: #388E3C; }
+    .btn-outline { background: none; border: 1px solid #ddd; color: #333; }
+    .btn-outline:hover { background: #f0f0f0; }
+    .result-row {
+      display: flex; justify-content: space-between; padding: 5px 0;
+      border-bottom: 1px solid #f0f0f0; font-size: 15px;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-value { font-weight: 700; color: #2196F3; }
+    .badge {
+      display: inline-block; background: #E3F2FD; color: #1565C0;
+      padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;
+    }
+    .flex-row { display: flex; gap: 6px; align-items: center; }
+    .flex-row input { flex: 1; margin-bottom: 0; min-width: 0; }
+    .flex-row button { width: 48px; padding: 10px 0; margin-bottom: 0; font-size: 20px; }
+    #productSelect { max-height: 150px; }
+    #scanner {
+      width: 100%; max-width: 100%; margin: 10px 0; display: none;
+      overflow: hidden; border-radius: 8px;
+    }
+    #scanner video { width: 100% !important; max-width: 100% !important; height: auto !important; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 10px 20px; border-radius: 8px;
+      font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      z-index: 999; text-align: center; max-width: 90%;
+    }
+    .toast.show { opacity: 1; }
+    .not-found { text-align: center; color: #999; font-size: 14px; padding: 6px; }
+    .loading { text-align: center; color: #999; font-size: 14px; padding: 20px; }
+    @media (max-width: 400px) {
+      body { padding: 8px; }
+      .card { padding: 10px; }
+      input, select { font-size: 14px; padding: 8px; margin-bottom: 8px; }
+      button { padding: 10px; font-size: 14px; }
+      .flex-row button { width: 44px; padding: 8px 0; font-size: 18px; }
+      h1 { font-size: 17px; }
+      .result-row { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🥗 Nutrition Manager</h1>
+
+  <div id="loadingMsg" class="loading">⏳ Завантаження продуктів...</div>
+
+  <div id="content" style="display:none;">
+    <div class="card">
+      <label for="searchInput">🔍 Продукт</label>
+      <input type="text" id="searchInput" placeholder="Почни вводити назву..." autocomplete="off">
+      <div id="productList" style="display:none;">
+        <select id="productSelect" size="5"></select>
+      </div>
+      <div id="notFoundMsg" class="not-found" style="display:none;">❌ Немає в базі.
+        <br><a href="https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec" target="_blank" style="color:#2196F3;">➕ Додати продукт</a>
+      </div>
+
+      <label for="barcodeInput">📷 Штрихкод</label>
+      <div class="flex-row">
+        <input type="text" id="barcodeInput" placeholder="Введи або відскануй...">
+        <button class="btn-outline" onclick="toggleScanner()">📷</button>
+      </div>
+      <div id="scanner"></div>
+
+      <label for="weightInput">⚖️ Вага (г)</label>
+      <input type="number" id="weightInput" placeholder="0" inputmode="decimal">
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <div id="productName" style="font-size:18px;font-weight:700;margin-bottom:8px;"></div>
+      <div class="result-row"><span>Ккал</span><span class="result-value" id="resKkal">0</span></div>
+      <div class="result-row"><span>Білки</span><span class="result-value" id="resProt">0</span></div>
+      <div class="result-row"><span>Жири</span><span class="result-value" id="resFat">0</span></div>
+      <div class="result-row"><span>Вуглеводи</span><span class="result-value" id="resCarbs">0</span></div>
+      <div id="codeBadge" class="badge" style="display:none;"></div>
+    </div>
+
+    <button class="btn-green" onclick="openAddProduct()" id="addBtn" style="display:none;">
+      ➕ Додати продукт у базу
+    </button>
+
+    <p style="text-align:center;font-size:12px;color:#999;margin-top:12px;">
+      Дані з Google Таблиці. Додати продукт →
+      <a href="https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec" target="_blank" style="color:#2196F3;">Web App</a>
+    </p>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const TSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec';
+
+    let products = [];
+    let currentProduct = null;
+    let html5QrCode = null;
+    let scannerRunning = false;
+
+    // Завантаження продуктів
+    fetch(TSV_URL)
+      .then(r => r.text())
+      .then(text => {
+        const lines = text.trim().split('\n');
+        // Формат TSV: Назва \t Ккал \t Білки \t Жири \t Вуглеводи \t Штрихкод?
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split('\t');
+          if (cols[0] && cols[0].trim()) {
+            products.push({
+              name: cols[0].trim(),
+              kkal: parseFloat(cols[1]) || 0,
+              prot: parseFloat(cols[2]) || 0,
+              fat: parseFloat(cols[3]) || 0,
+              carbs: parseFloat(cols[4]) || 0,
+              code: cols[5] ? cols[5].trim() : ''
+            });
+          }
+        }
+        document.getElementById('loadingMsg').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        if (products.length === 0) showToast('❌ Немає продуктів у базі', 4000);
+      })
+      .catch(err => {
+        document.getElementById('loadingMsg').textContent = '❌ Помилка завантаження: ' + err.message;
+      });
+
+    const searchInput = document.getElementById('searchInput');
+    const productSelect = document.getElementById('productSelect');
+    const productList = document.getElementById('productList');
+    const notFoundMsg = document.getElementById('notFoundMsg');
+    const addBtn = document.getElementById('addBtn');
+    let searchTimeout;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(doSearch, 200);
+    });
+
+    function doSearch() {
+      const q = searchInput.value.toLowerCase().trim();
+      if (!q) {
+        productList.style.display = 'none';
+        notFoundMsg.style.display = 'none';
+        addBtn.style.display = 'none';
+        currentProduct = null;
+        document.getElementById('resultCard').style.display = 'none';
+        return;
+      }
+      const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.code && p.code.includes(q))
+      );
+      if (filtered.length === 0) {
+        productList.style.display = 'none';
+        notFoundMsg.style.display = 'block';
+        addBtn.style.display = 'block';
+        currentProduct = null;
+        document.getElementById('resultCard').style.display = 'none';
+        return;
+      }
+      if (filtered.length > 20) {
+        productList.style.display = 'none';
+        notFoundMsg.style.display = 'none';
+        addBtn.style.display = 'none';
+        return;
+      }
+      notFoundMsg.style.display = 'none';
+      addBtn.style.display = 'none';
+      productSelect.innerHTML = '';
+      filtered.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + (p.code ? ' [' + p.code + ']' : '');
+        productSelect.appendChild(opt);
+      });
+      productList.style.display = 'block';
+    }
+
+    productSelect.addEventListener('change', () => {
+      const name = productSelect.value;
+      const p = products.find(x => x.name === name);
+      if (p) selectProduct(p);
+      productList.style.display = 'none';
+    });
+
+    function selectProduct(p) {
+      currentProduct = p;
+      searchInput.value = p.name;
+      productList.style.display = 'none';
+      notFoundMsg.style.display = 'none';
+      addBtn.style.display = 'none';
+      barcodeInput.value = p.code || '';
+      updateResult();
+    }
+
+    const barcodeInput = document.getElementById('barcodeInput');
+    barcodeInput.addEventListener('input', () => {
+      const code = barcodeInput.value.trim();
+      if (!code) return;
+      const p = products.find(x => x.code === code);
+      if (p) { selectProduct(p); }
+      else { currentProduct = null; document.getElementById('resultCard').style.display = 'none'; }
+    });
+
+    function toggleScanner() {
+      if (scannerRunning) { stopScanner(); return; }
+      document.getElementById('scanner').style.display = 'block';
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("scanner");
+      }
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        onScanSuccess
+      ).then(() => { scannerRunning = true; })
+      .catch(err => showToast('❌ Камера: ' + err));
+    }
+
+    function stopScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          scannerRunning = false;
+          document.getElementById('scanner').style.display = 'none';
+        });
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      stopScanner();
+      barcodeInput.value = decodedText;
+      const p = products.find(x => x.code === decodedText);
+      if (p) {
+        selectProduct(p);
+        showToast('✅ ' + p.name);
+      } else {
+        searchInput.value = '';
+        currentProduct = null;
+        document.getElementById('resultCard').style.display = 'none';
+        notFoundMsg.style.display = 'block';
+        addBtn.style.display = 'block';
+        showToast('📷 Код не знайдено', 3000);
+      }
+    }
+
+    const weightInput = document.getElementById('weightInput');
+    weightInput.addEventListener('input', updateResult);
+
+    function updateResult() {
+      const w = parseFloat(weightInput.value) || 0;
+      if (!currentProduct || w <= 0) {
+        document.getElementById('resultCard').style.display = 'none';
+        return;
+      }
+      const factor = w / 100;
+      document.getElementById('productName').textContent = currentProduct.name;
+      document.getElementById('resKkal').textContent = Math.round(currentProduct.kkal * factor * 10) / 10;
+      document.getElementById('resProt').textContent = Math.round(currentProduct.prot * factor * 10) / 10;
+      document.getElementById('resFat').textContent = Math.round(currentProduct.fat * factor * 10) / 10;
+      document.getElementById('resCarbs').textContent = Math.round(currentProduct.carbs * factor * 10) / 10;
+      const badge = document.getElementById('codeBadge');
+      if (currentProduct.code) {
+        badge.textContent = '📦 ' + currentProduct.code;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+      document.getElementById('resultCard').style.display = 'block';
+    }
+
+    function openAddProduct() {
+      window.open(WEB_APP_URL, '_blank');
+    }
+
+    function showToast(msg, duration) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration || 3000);
+    }
+  </script>
+</body>
+</html>
