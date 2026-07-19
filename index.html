@@ -243,10 +243,14 @@
     });
 
     function lookupBarcode(code) {
-      if (!code) return;
-      searchInput.value = '';
       productList.style.display = 'none';
       notFoundMsg.style.display = 'none';
+      searchInput.value = '';
+      if (!code) {
+        currentProduct = null;
+        document.getElementById('resultCard').style.display = 'none';
+        return;
+      }
       const p = products.find(x => x.code === code);
       if (p) {
         selectProduct(p);
