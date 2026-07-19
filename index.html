@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nutrition Manager</title>
+  <title>Калькулятор Калорій</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,6 +32,8 @@
     .btn-primary:hover { background: #1976D2; }
     .btn-green { background: #4CAF50; color: #fff; }
     .btn-green:hover { background: #388E3C; }
+    .btn-orange { background: #FF9800; color: #fff; }
+    .btn-orange:hover { background: #F57C00; }
     .btn-outline { background: none; border: 1px solid #ddd; color: #333; }
     .btn-outline:hover { background: #f0f0f0; }
     .result-row {
@@ -62,6 +64,12 @@
     .toast.show { opacity: 1; }
     .not-found { text-align: center; color: #999; font-size: 14px; padding: 6px; }
     .loading { text-align: center; color: #999; font-size: 14px; padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .success-banner {
+      background: #E8F5E9; color: #2E7D32; text-align: center; padding: 20px;
+      border-radius: 10px; font-size: 16px; font-weight: 600; display: none;
+    }
     @media (max-width: 400px) {
       body { padding: 8px; }
       .card { padding: 10px; }
@@ -74,20 +82,20 @@
   </style>
 </head>
 <body>
-  <h1>🥗 Nutrition Manager</h1>
+  <h1>🥗 Калькулятор Калорій</h1>
 
   <div id="loadingMsg" class="loading">⏳ Завантаження продуктів...</div>
 
   <div id="content" style="display:none;">
+
+    <!-- КАЛЬКУЛЯТОР -->
     <div class="card">
       <label for="searchInput">🔍 Продукт</label>
       <input type="text" id="searchInput" placeholder="Почни вводити назву..." autocomplete="off">
       <div id="productList" style="display:none;">
         <select id="productSelect" size="5"></select>
       </div>
-      <div id="notFoundMsg" class="not-found" style="display:none;">❌ Немає в базі.
-        <br><a href="https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec" target="_blank" style="color:#2196F3;">➕ Додати продукт</a>
-      </div>
+      <div id="notFoundMsg" class="not-found" style="display:none;"></div>
 
       <label for="barcodeInput">📷 Штрихкод</label>
       <div class="flex-row">
@@ -109,13 +117,50 @@
       <div id="codeBadge" class="badge" style="display:none;"></div>
     </div>
 
-    <button class="btn-green" onclick="openAddProduct()" id="addBtn" style="display:none;">
+    <!-- КНОПКА "ДОДАТИ ПРОДУКТ" -->
+    <button class="btn-orange" onclick="toggleAddForm()" id="toggleAddBtn">
       ➕ Додати продукт у базу
     </button>
 
+    <!-- ФОРМА ДОДАВАННЯ -->
+    <div class="card" id="addFormCard" style="display:none;">
+      <h2 style="font-size:16px;margin-bottom:12px;">➕ Новий продукт</h2>
+
+      <label>Назва *</label>
+      <input type="text" id="newName" placeholder="Наприклад: Огірок">
+
+      <div class="form-grid">
+        <div>
+          <label>Ккал</label>
+          <input type="number" id="newKkal" step="0.1" value="0" placeholder="0">
+        </div>
+        <div>
+          <label>Білки</label>
+          <input type="number" id="newProt" step="0.1" value="0" placeholder="0">
+        </div>
+        <div>
+          <label>Жири</label>
+          <input type="number" id="newFat" step="0.1" value="0" placeholder="0">
+        </div>
+        <div>
+          <label>Вуглеводи</label>
+          <input type="number" id="newCarbs" step="0.1" value="0" placeholder="0">
+        </div>
+      </div>
+
+      <label>Штрихкод (якщо є)</label>
+      <input type="text" id="newCode" placeholder="4850001001010">
+
+      <div class="flex-row" style="gap:8px;">
+        <button class="btn-green" onclick="addProductFromForm()" style="margin-bottom:0;">💾 Додати</button>
+        <button class="btn-outline" onclick="toggleAddForm()" style="margin-bottom:0;">✖ Скасувати</button>
+      </div>
+    </div>
+
+    <div id="successBanner" class="success-banner">✅ Продукт додано! Онови сторінку, щоб побачити.</div>
+
     <p style="text-align:center;font-size:12px;color:#999;margin-top:12px;">
-      Дані з Google Таблиці. Додати продукт →
-      <a href="https://script.google.com/macros/s/AKfycbyKOY1c1lwwgCT1nijZjA9ewAcnbwQYSAXd3Q6429dHkTYLGngLwayq4Jp4CRy285gK6A/exec" target="_blank" style="color:#2196F3;">Web App</a>
+      Дані з Google Таблиці
     </p>
   </div>
 
@@ -135,7 +180,6 @@
       .then(r => r.text())
       .then(text => {
         const lines = text.trim().split('\n');
-        // Формат TSV: Назва \t Ккал \t Білки \t Жири \t Вуглеводи \t Штрихкод?
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split('\t');
           if (cols[0] && cols[0].trim()) {
@@ -157,11 +201,11 @@
         document.getElementById('loadingMsg').textContent = '❌ Помилка завантаження: ' + err.message;
       });
 
+    // ПОШУК
     const searchInput = document.getElementById('searchInput');
     const productSelect = document.getElementById('productSelect');
     const productList = document.getElementById('productList');
     const notFoundMsg = document.getElementById('notFoundMsg');
-    const addBtn = document.getElementById('addBtn');
     let searchTimeout;
 
     searchInput.addEventListener('input', () => {
@@ -174,7 +218,6 @@
       if (!q) {
         productList.style.display = 'none';
         notFoundMsg.style.display = 'none';
-        addBtn.style.display = 'none';
         currentProduct = null;
         document.getElementById('resultCard').style.display = 'none';
         return;
@@ -185,8 +228,8 @@
       );
       if (filtered.length === 0) {
         productList.style.display = 'none';
+        notFoundMsg.innerHTML = '❌ Немає в базі. <a href="#" onclick="toggleAddForm();return false;" style="color:#2196F3;">➕ Додати</a>';
         notFoundMsg.style.display = 'block';
-        addBtn.style.display = 'block';
         currentProduct = null;
         document.getElementById('resultCard').style.display = 'none';
         return;
@@ -194,11 +237,9 @@
       if (filtered.length > 20) {
         productList.style.display = 'none';
         notFoundMsg.style.display = 'none';
-        addBtn.style.display = 'none';
         return;
       }
       notFoundMsg.style.display = 'none';
-      addBtn.style.display = 'none';
       productSelect.innerHTML = '';
       filtered.forEach(p => {
         const opt = document.createElement('option');
@@ -221,11 +262,11 @@
       searchInput.value = p.name;
       productList.style.display = 'none';
       notFoundMsg.style.display = 'none';
-      addBtn.style.display = 'none';
       barcodeInput.value = p.code || '';
       updateResult();
     }
 
+    // ШТРИХКОД
     const barcodeInput = document.getElementById('barcodeInput');
     barcodeInput.addEventListener('input', () => {
       const code = barcodeInput.value.trim();
@@ -235,12 +276,11 @@
       else { currentProduct = null; document.getElementById('resultCard').style.display = 'none'; }
     });
 
+    // СКАНЕР
     function toggleScanner() {
       if (scannerRunning) { stopScanner(); return; }
       document.getElementById('scanner').style.display = 'block';
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("scanner");
-      }
+      if (!html5QrCode) html5QrCode = new Html5Qrcode("scanner");
       html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 150 } },
@@ -262,19 +302,18 @@
       stopScanner();
       barcodeInput.value = decodedText;
       const p = products.find(x => x.code === decodedText);
-      if (p) {
-        selectProduct(p);
-        showToast('✅ ' + p.name);
-      } else {
+      if (p) { selectProduct(p); showToast('✅ ' + p.name); }
+      else {
         searchInput.value = '';
         currentProduct = null;
         document.getElementById('resultCard').style.display = 'none';
+        notFoundMsg.innerHTML = '📷 Код: ' + decodedText + '<br><a href="#" onclick="toggleAddForm();return false;" style="color:#2196F3;">➕ Додати продукт</a>';
         notFoundMsg.style.display = 'block';
-        addBtn.style.display = 'block';
         showToast('📷 Код не знайдено', 3000);
       }
     }
 
+    // ВАГА
     const weightInput = document.getElementById('weightInput');
     weightInput.addEventListener('input', updateResult);
 
@@ -300,8 +339,68 @@
       document.getElementById('resultCard').style.display = 'block';
     }
 
-    function openAddProduct() {
-      window.open(WEB_APP_URL, '_blank');
+    // ФОРМА ДОДАВАННЯ
+    function toggleAddForm() {
+      const card = document.getElementById('addFormCard');
+      const btn = document.getElementById('toggleAddBtn');
+      const banner = document.getElementById('successBanner');
+      if (card.style.display !== 'block') {
+        card.style.display = 'block';
+        btn.textContent = '✖ Сховати форму';
+        banner.style.display = 'none';
+      } else {
+        card.style.display = 'none';
+        btn.textContent = '➕ Додати продукт у базу';
+      }
+    }
+
+    function addProductFromForm() {
+      const name = document.getElementById('newName').value.trim();
+      const kkal = document.getElementById('newKkal').value;
+      const prot = document.getElementById('newProt').value;
+      const fat = document.getElementById('newFat').value;
+      const carbs = document.getElementById('newCarbs').value;
+      const code = document.getElementById('newCode').value.trim();
+
+      if (!name) { showToast('❌ Введи назву'); return; }
+
+      const body = new URLSearchParams({
+        name, kkal, prot, fat, carbs, code
+      });
+
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(() => {
+        // no-cors не дає прочитати відповідь, але запит пішов
+        document.getElementById('addFormCard').style.display = 'none';
+        document.getElementById('toggleAddBtn').textContent = '➕ Додати продукт у базу';
+        document.getElementById('successBanner').style.display = 'block';
+
+        // Додаємо локально, щоб одразу бачити
+        products.push({
+          name: name,
+          kkal: parseFloat(kkal) || 0,
+          prot: parseFloat(prot) || 0,
+          fat: parseFloat(fat) || 0,
+          carbs: parseFloat(carbs) || 0,
+          code: code
+        });
+
+        // Очищаємо форму
+        document.getElementById('newName').value = '';
+        document.getElementById('newKkal').value = '0';
+        document.getElementById('newProt').value = '0';
+        document.getElementById('newFat').value = '0';
+        document.getElementById('newCarbs').value = '0';
+        document.getElementById('newCode').value = '';
+
+        showToast('✅ "' + name + '" додано!', 3000);
+      }).catch(() => {
+        showToast('❌ Помилка. Спробуй ще раз.', 3000);
+      });
     }
 
     function showToast(msg, duration) {
