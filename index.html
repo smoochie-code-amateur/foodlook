@@ -327,17 +327,33 @@
         }
         ctx.putImageData(d, 0, 0);
 
+        // debug: show processed image
+        var dbg = document.getElementById('ocrDebug');
+        if (!dbg) {
+          dbg = document.createElement('canvas');
+          dbg.id = 'ocrDebug';
+          dbg.style.maxWidth = '100%';
+          dbg.style.marginTop = '8px';
+          dbg.style.border = '1px solid #ccc';
+          dbg.style.borderRadius = '6px';
+          document.getElementById('ocrFile').parentNode.appendChild(dbg);
+        }
+        dbg.width = c.width;
+        dbg.height = c.height;
+        dbg.getContext('2d').drawImage(c, 0, 0);
+
         prog.textContent = '🔍 Розпізнавання...';
         Tesseract.recognize(
           c.toDataURL('image/png'),
-          'ukr+rus',
+          'ukr+eng',
           {
             logger: function(m) {
               if (m.status === 'recognizing text') {
                 prog.textContent = '🔍 ' + Math.round(m.progress * 100) + '%';
               }
             },
-            tessedit_pageseg_mode: '4'
+            tessedit_pageseg_mode: 6,
+            tessedit_ocr_engine_mode: 1
           }
         ).then(function(r) {
           prog.style.display = 'none';
@@ -366,9 +382,8 @@
             selectItem(bestMatch);
             showToast('✅ ' + bestMatch.name, 2000);
           } else {
-            searchInput.value = text.replace(/\n/g, ' ').slice(0, 100);
-            doSearch();
-            showToast('📄 Продукт не знайдено, текст у пошуку', 3000);
+            searchInput.value = '';
+            showToast('❌ Не знайдено: продукт не в базі', 3000);
           }
         }).catch(function(err) {
           prog.style.display = 'none';
