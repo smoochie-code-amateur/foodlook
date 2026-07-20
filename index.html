@@ -154,10 +154,28 @@
 
   <!-- TAB: Profile -->
   <div id="tabProfile" style="display:none;">
-    <div id="loginScreen" class="card">
-      <h1 style="font-size:18px;">🔐 Вхід</h1>
+    <div id="createPassScreen" class="card" style="display:none;">
+      <h1 style="font-size:18px;">🔐 Створіть пароль для профілю</h1>
+      <input type="password" id="createPass" placeholder="Придумайте пароль">
+      <input type="password" id="createPassConfirm" placeholder="Повторіть пароль">
+      <button class="btn-primary" onclick="handleCreatePass()">🔐 Створити профіль</button>
+      <p style="font-size:12px;color:#888;margin-top:10px;line-height:1.5;">
+        ⚠️ Дані зберігаються <strong>локально</strong> у вашому браузері.
+        Пароль не зберігається — він використовується для шифрування.
+        Якщо забудете пароль, дані буде неможливо відновити.
+        <br>📌 Регулярно створюйте бекап через <strong>Експорт даних</strong>.
+      </p>
+      <button class="btn-outline" onclick="clearAllData()" style="font-size:12px;color:#f44336;">🧹 Очистити всі дані</button>
+    </div>
+
+    <div id="loginScreen" class="card" style="display:none;">
+      <h1 style="font-size:18px;">🔐 Введіть пароль</h1>
       <input type="password" id="loginPass" placeholder="Пароль">
       <button class="btn-primary" onclick="handleLogin()">🚀 Увійти</button>
+      <p style="font-size:12px;color:#888;margin-top:8px;">
+        ⚠️ Дані зберігаються локально. Забули пароль? Натисніть "Очистити".
+      </p>
+      <button class="btn-outline" onclick="clearAllData()" style="font-size:12px;color:#f44336;">🧹 Очистити всі дані</button>
     </div>
 
     <div id="profileScreen" class="card" style="display:none;">
@@ -165,16 +183,44 @@
       <div class="profile-stats">
         <div><span class="num" id="pWeight">—</span><span class="lbl">Вага (кг)</span></div>
         <div><span class="num" id="pHeight">—</span><span class="lbl">Зріст (см)</span></div>
+        <div><span class="num" id="pAge">—</span><span class="lbl">Вік</span></div>
         <div><span class="num" id="pNorm">—</span><span class="lbl">Норма ккал</span></div>
       </div>
       <div class="form-grid">
+        <div><label>Ім'я</label><input type="text" id="editName"></div>
+        <div><label>Вік</label><input type="number" id="editAge" min="1" max="150"></div>
+        <div><label>Стать</label>
+          <select id="editGender">
+            <option value="male">Чоловіча</option>
+            <option value="female">Жіноча</option>
+          </select>
+        </div>
         <div><label>Вага (кг)</label><input type="number" id="editWeight" step="0.1"></div>
         <div><label>Зріст (см)</label><input type="number" id="editHeight" step="1"></div>
-        <div class="full"><label>Норма ккал</label><input type="number" id="editNorm" step="1"></div>
+        <div><label>Норма ккал</label><input type="number" id="editNorm" step="1"></div>
+        <div class="full">
+          <label>📊 Розрахунок норми</label>
+          <div class="flex-row" style="gap:4px;">
+            <button class="btn-outline" onclick="calcBMR()" style="font-size:13px;width:auto;flex:1;padding:10px;">🧮 Розрахувати BMR</button>
+            <select id="editDeficit" style="width:auto;flex:1;margin-bottom:0;">
+              <option value="-20">-20% (сильний дефіцит)</option>
+              <option value="-15">-15%</option>
+              <option value="-10">-10% (помірний дефіцит)</option>
+              <option value="-5">-5%</option>
+              <option value="0" selected>0% (підтримка)</option>
+              <option value="5">+5%</option>
+              <option value="10">+10% (набір маси)</option>
+              <option value="15">+15%</option>
+              <option value="20">+20% (сильний набір)</option>
+            </select>
+          </div>
+          <div id="bmrResult" style="font-size:13px;color:#888;margin-top:4px;"></div>
+        </div>
       </div>
       <button class="btn-green" onclick="saveProfile()">💾 Зберегти профіль</button>
       <button class="btn-outline" onclick="showExport()" style="font-size:13px;">📦 Експорт даних</button>
       <button class="btn-outline" onclick="showImport()" style="font-size:13px;">📂 Імпорт даних</button>
+      <button class="btn-outline" onclick="clearAllData()" style="font-size:13px;color:#f44336;">🧹 Вийти та очистити дані</button>
     </div>
   </div>
 
@@ -274,7 +320,7 @@ async function login(pass) {
     var salt = genSalt();
     localStorage.setItem('foodlook_salt', toB64(salt));
     _key = await deriveKey(pass, salt);
-    _profile = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+    _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
     _diary = {};
     await saveLocal();
     return true;
@@ -283,7 +329,7 @@ async function login(pass) {
   _key = await deriveKey(pass, salt);
   try {
     var pStr = localStorage.getItem('foodlook_profile');
-    _profile = pStr ? await decrypt(pStr, _key) : { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+    _profile = pStr ? await decrypt(pStr, _key) : { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
     var dStr = localStorage.getItem('foodlook_diary');
     _diary = dStr ? await decrypt(dStr, _key) : {};
     return true;
@@ -314,6 +360,12 @@ async function handleLogin() {
 document.getElementById('loginPass').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') handleLogin();
 });
+document.getElementById('createPass').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleCreatePass();
+});
+document.getElementById('createPassConfirm').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleCreatePass();
+});
 
 // ⏎ на diaryWeight теж додає
 document.getElementById('diaryWeight').addEventListener('keydown', function(e) {
@@ -322,22 +374,74 @@ document.getElementById('diaryWeight').addEventListener('keydown', function(e) {
 
 // ========== PROFILE ==========
 function showProfileScreen() {
-  if (!_profile) _profile = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+  if (!_profile) _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
+  document.getElementById('createPassScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('profileScreen').style.display = 'block';
   renderProfile();
 }
 
+function showPasswordScreen() {
+  document.getElementById('profileScreen').style.display = 'none';
+  if (hasSalt()) {
+    document.getElementById('createPassScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginPass').focus();
+  } else {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('createPassScreen').style.display = 'block';
+    document.getElementById('createPass').value = '';
+    document.getElementById('createPassConfirm').value = '';
+    document.getElementById('createPass').focus();
+  }
+}
+
+function clearAllData() {
+  if (!confirm('🧹 Видалити всі локальні дані (профіль, щоденник, пароль)? Це не можна скасувати.')) return;
+  localStorage.removeItem('foodlook_salt');
+  localStorage.removeItem('foodlook_profile');
+  localStorage.removeItem('foodlook_diary');
+  localStorage.removeItem('foodlook_backup');
+  _key = null; _profile = null; _diary = null;
+  showToast('✅ Дані очищено');
+  showPasswordScreen();
+}
+
+async function handleCreatePass() {
+  var pass = document.getElementById('createPass').value;
+  var confirm = document.getElementById('createPassConfirm').value;
+  if (!pass) { showToast('❌ Придумайте пароль'); return; }
+  if (pass.length < 4) { showToast('❌ Пароль має бути хоча б 4 символи'); return; }
+  if (pass !== confirm) { showToast('❌ Паролі не співпадають'); return; }
+  var ok = await login(pass);
+  if (ok) {
+    showToast('✅ Профіль створено! Дані зберігаються локально.');
+    showProfileScreen();
+    loadTodayDiary();
+    document.getElementById('createPass').value = '';
+    document.getElementById('createPassConfirm').value = '';
+  } else {
+    showToast('❌ Помилка створення профілю');
+  }
+}
+
 function renderProfile() {
   document.getElementById('pWeight').textContent = _profile.weight || '—';
   document.getElementById('pHeight').textContent = _profile.height || '—';
+  document.getElementById('pAge').textContent = _profile.age || '—';
   document.getElementById('pNorm').textContent = _profile.kcalNorm || '—';
+  document.getElementById('editName').value = _profile.name || '';
+  document.getElementById('editAge').value = _profile.age || '';
+  document.getElementById('editGender').value = _profile.gender || 'male';
   document.getElementById('editWeight').value = _profile.weight || '';
   document.getElementById('editHeight').value = _profile.height || '';
   document.getElementById('editNorm').value = _profile.kcalNorm || '';
+  document.getElementById('editDeficit').value = _profile.deficit || 0;
   var photo = document.getElementById('profilePhoto');
   if (_profile.photoUrl) { photo.src = _profile.photoUrl; photo.style.background = ''; }
   else { photo.src = ''; photo.style.background = '#e0e0e0'; }
+  document.getElementById('bmrResult').textContent = '';
 }
 
 function changePhoto() {
@@ -347,12 +451,35 @@ function changePhoto() {
 
 async function saveProfile() {
   if (!_key) { showToast('❌ Спочатку увійди'); return; }
+  _profile.name = document.getElementById('editName').value || '';
+  _profile.age = parseInt(document.getElementById('editAge').value) || 0;
+  _profile.gender = document.getElementById('editGender').value || 'male';
   _profile.weight = parseFloat(document.getElementById('editWeight').value) || 0;
   _profile.height = parseFloat(document.getElementById('editHeight').value) || 0;
   _profile.kcalNorm = parseFloat(document.getElementById('editNorm').value) || 0;
+  _profile.deficit = parseInt(document.getElementById('editDeficit').value) || 0;
   await saveLocal();
   showToast('✅ Профіль збережено');
   renderProfile();
+}
+
+function calcBMR() {
+  var weight = parseFloat(document.getElementById('editWeight').value) || 0;
+  var height = parseFloat(document.getElementById('editHeight').value) || 0;
+  var age = parseFloat(document.getElementById('editAge').value) || 0;
+  var gender = document.getElementById('editGender').value;
+  if (!weight || !height || !age) {
+    document.getElementById('bmrResult').textContent = '❌ Заповніть вагу, зріст та вік';
+    return;
+  }
+  var bmr = gender === 'male'
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+  var deficit = parseInt(document.getElementById('editDeficit').value) || 0;
+  var adjusted = Math.round(bmr * (1 + deficit / 100));
+  document.getElementById('bmrResult').innerHTML = 'BMR: <strong>' + Math.round(bmr) + '</strong> ккал' +
+    (deficit !== 0 ? ' → ' + (deficit > 0 ? '+' : '') + deficit + '%: <strong>' + adjusted + '</strong> ккал' : '');
+  document.getElementById('editNorm').value = adjusted;
 }
 
 // ========== EXPORT / IMPORT ==========
@@ -409,7 +536,7 @@ async function doImport(jsonStr, pass) {
       _key = await deriveKey(prompt('🔐 Пароль для локального входу (придумайте):'), ls);
     }
 
-    _profile = data.profile || { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+    _profile = data.profile || { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
     _diary = data.diary || {};
     await saveLocal();
     showToast('✅ Дані імпортовано');
@@ -624,10 +751,7 @@ function switchTab(tab) {
   });
   if (tab === 'profile') {
     if (_key) { showProfileScreen(); }
-    else {
-      document.getElementById('loginScreen').style.display = 'block';
-      document.getElementById('profileScreen').style.display = 'none';
-    }
+    else { showPasswordScreen(); }
   }
   if (tab === 'diary' && _key) loadTodayDiary();
 }
