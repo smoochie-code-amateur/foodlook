@@ -80,78 +80,9 @@
       h1 { font-size: 17px; }
       .result-row { font-size: 14px; }
     }
-    .theme-btn {
-      position: fixed; top: 10px; right: 10px; z-index: 100;
-      background: none; border: none; font-size: 22px; cursor: pointer;
-      opacity: 0.4; padding: 4px; line-height: 1;
-    }
-    .theme-btn:hover { opacity: 1; }
-
-    /* Aero full */
-    body.aero {
-      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-      background-attachment: fixed;
-      color: #e0e0e0;
-    }
-    body.aero .card {
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-    }
-    body.aero h1 { color: rgba(255,255,255,0.92); }
-    body.aero label { color: rgba(255,255,255,0.6); }
-    body.aero input, body.aero select {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #fff;
-      border-radius: 10px;
-    }
-    body.aero input::placeholder { color: rgba(255,255,255,0.35); }
-    body.aero input:focus, body.aero select:focus {
-      border-color: #b388ff;
-      background: rgba(255,255,255,0.12);
-      box-shadow: 0 0 0 3px rgba(179,136,255,0.15);
-    }
-    body.aero button {
-      border: 1px solid rgba(255,255,255,0.15);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #fff;
-    }
-    body.aero .btn-primary {
-      background: rgba(33,150,243,0.35);
-      box-shadow: 0 4px 16px rgba(33,150,243,0.2);
-    }
-    body.aero .btn-primary:hover { background: rgba(33,150,243,0.5); }
-    body.aero .btn-green {
-      background: rgba(76,175,80,0.35);
-      box-shadow: 0 4px 16px rgba(76,175,80,0.2);
-    }
-    body.aero .btn-green:hover { background: rgba(76,175,80,0.5); }
-    body.aero .btn-orange {
-      background: rgba(255,152,0,0.35);
-      box-shadow: 0 4px 16px rgba(255,152,0,0.2);
-    }
-    body.aero .btn-orange:hover { background: rgba(255,152,0,0.5); }
-    body.aero .btn-outline {
-      background: rgba(255,255,255,0.06);
-      border-color: rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.85);
-    }
-    body.aero .btn-outline:hover { background: rgba(255,255,255,0.14); }
-    body.aero .badge { background: rgba(179,136,255,0.25); color: #b388ff; }
-    body.aero .result-row { border-bottom-color: rgba(255,255,255,0.07); }
-    body.aero .result-value { color: #b388ff; }
-    body.aero .toast { background: rgba(0,0,0,0.8); color: #fff; }
-    body.aero .sub { color: rgba(255,255,255,0.5); }
-    body.aero .theme-btn { opacity: 0.6; color: #fff; }
-    body.aero .scanner-btn { border: none; }
   </style>
 </head>
 <body>
-  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
   <h1>🥗 Калькулятор Калорій</h1>
 
   <div id="loadingMsg" class="loading">⏳ Завантаження продуктів...</div>
@@ -200,16 +131,6 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    function toggleTheme() {
-      document.body.classList.toggle('aero');
-      localStorage.setItem('aero', document.body.classList.contains('aero') ? '1' : '');
-      document.getElementById('themeBtn').textContent = document.body.classList.contains('aero') ? '☀️' : '🌙';
-    }
-    if (localStorage.getItem('aero')) {
-      document.body.classList.add('aero');
-      document.getElementById('themeBtn').textContent = '☀️';
-    }
-
     const FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
     const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=303617623&single=true&output=tsv';
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz8hJ0imA-w7qbqjjOK1BcymP_MoX69ifsh-bu-MORLTp9LW8OyFi50IdYI070BWizi7A/exec';
