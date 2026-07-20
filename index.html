@@ -303,6 +303,7 @@
         c.height = img.height * scale;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0, c.width, c.height);
+        const rawDataUrl = c.toDataURL('image/png');
 
         // підвищення контрасту — greyscale + розтяг гістограми
         var d = ctx.getImageData(0, 0, c.width, c.height);
@@ -332,7 +333,7 @@
         if (!dbg) {
           dbg = document.createElement('canvas');
           dbg.id = 'ocrDebug';
-          dbg.style.maxWidth = '100%';
+          dbg.style.width = '100%';
           dbg.style.marginTop = '8px';
           dbg.style.border = '1px solid #ccc';
           dbg.style.borderRadius = '6px';
@@ -344,7 +345,7 @@
 
         prog.textContent = '🔍 Розпізнавання...';
         Tesseract.recognize(
-          c.toDataURL('image/png'),
+          rawDataUrl,
           'ukr+eng',
           {
             logger: function(m) {
@@ -352,8 +353,7 @@
                 prog.textContent = '🔍 ' + Math.round(m.progress * 100) + '%';
               }
             },
-            tessedit_pageseg_mode: 6,
-            tessedit_ocr_engine_mode: 1
+            tessedit_pageseg_mode: 6
           }
         ).then(function(r) {
           prog.style.display = 'none';
