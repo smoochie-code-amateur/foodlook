@@ -279,7 +279,23 @@ function catEmoji(c) {
   return CATEGORY_EMOJI[c] || '';
 }
 
-// ========== CRYPTO ==========
+// ========== API (fetch to Apps Script) ==========
+async function apiPost(action, params) {
+  var fd = new FormData();
+  fd.append('action', action);
+  for (var k in params) fd.append(k, params[k]);
+  var r = await fetch(WEB_APP_URL, { method: 'POST', body: fd });
+  var text = await r.text();
+  try { return JSON.parse(text); } catch(e) { return { success: false, error: text }; }
+}
+
+async function apiGet(action, params) {
+  var url = WEB_APP_URL + '?action=' + encodeURIComponent(action);
+  for (var k in params) url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  var r = await fetch(url);
+  var text = await r.text();
+  try { return JSON.parse(text); } catch(e) { return { success: false, error: text }; }
+}
 async function deriveKey(password, salt) {
   var enc = new TextEncoder();
   var keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
@@ -373,20 +389,16 @@ async function firstTimeSetup(user, password, recoveryPhrase) {
 }
 
 async function recoverPassword(user, recoveryPhrase) {
-  return new Promise(function(resolve, reject) {
-    google.script.run
-      .withSuccessHandler(async function(data) {
-        if (!data || !data.recoverySalt || !data.recoveryEncrypted) { resolve(null); return; }
-        var rs = fromBase64(data.recoverySalt);
-        var rk = await deriveKey(recoveryPhrase, rs);
-        try {
-          var obj = await decryptObj(data.recoveryEncrypted, rk);
-          resolve(obj.password);
-        } catch(e) { resolve(null); }
-      })
-      .withFailureHandler(function() { resolve(null); })
-      .loadProfile(user);
-  });
+  var res = await apiGet('loadProfile', { user: user });
+  if (!res.success || !res.data) return null;
+  var data = res.data;
+  if (!data || !data.recoverySalt || !data.recoveryEncrypted) return null;
+  var rs = fromBase64(data.recoverySalt);
+  var rk = await deriveKey(recoveryPhrase, rs);
+  try {
+    var obj = await decryptObj(data.recoveryEncrypted, rk);
+    return obj.password;
+  } catch(e) { return null; }
 }
 
 async function handleLogin() {
@@ -402,41 +414,48 @@ async function handleLogin() {
     loadTodayDiary();
     return;
   }
-  google.script.run
-    .withSuccessHandler(async function(data) {
-      if (!data || !data.salt) {
-        var ph = prompt('🔐 Перший вхід. Придумайте кодову фразу для відновлення пароля:');
-        if (!ph) { showToast('❌ Кодова фраза обов\'язкова'); return; }
-        var setup = await firstTimeSetup(user, pass, ph);
-        google.script.run
-          .withSuccessHandler(function() {
-            showToast('✅ Профіль створено');
-            _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
-            showProfileScreen();
-          })
-          .withFailureHandler(function(e) { showToast('❌ ' + e.message); })
-          .saveProfile(user, setup.salt, setup.encrypted, setup.recoverySalt, setup.recoveryEncrypted);
-        return;
-      }
-      var salt = fromBase64(data.salt);
-      var key = await deriveKey(pass, salt);
-      try {
-        var test = await decryptObj(data.encrypted, key);
-        _cryptoKey = key;
-        _saltBase64 = data.salt;
-        _currentUser = user;
-        var keyRaw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
-        storeKey(toBase64(keyRaw), data.salt);
-        showToast('✅ Увійшов');
-        _profileData = test;
-        showProfileScreen();
-        loadTodayDiary();
-      } catch(e) {
-        showToast('❌ Невірний пароль');
-      }
-    })
-    .withFailureHandler(function(e) { showToast('❌ ' + e.message); })
-    .loadProfile(user);
+
+  var res = await apiGet('loadProfile', { user: user });
+  if (!res.success) { showToast('❌ ' + (res.error || 'Помилка сервера')); return; }
+  var data = res.data;
+
+  if (!data || !data.salt) {
+    var ph = prompt('🔐 Перший вхід. Придумайте кодову фразу для відновлення пароля:');
+    if (!ph) { showToast('❌ Кодова фраза обов\'язкова'); return; }
+    var setup = await firstTimeSetup(user, pass, ph);
+    var saveRes = await apiPost('saveProfile', {
+      user: user,
+      salt: setup.salt,
+      encrypted: setup.encrypted,
+      recoverySalt: setup.recoverySalt || '',
+      recoveryEncrypted: setup.recoveryEncrypted || ''
+    });
+    if (saveRes.success) {
+      showToast('✅ Профіль створено');
+      _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+      showProfileScreen();
+    } else {
+      showToast('❌ ' + (saveRes.error || 'Помилка'));
+    }
+    return;
+  }
+
+  var salt = fromBase64(data.salt);
+  var key = await deriveKey(pass, salt);
+  try {
+    var test = await decryptObj(data.encrypted, key);
+    _cryptoKey = key;
+    _saltBase64 = data.salt;
+    _currentUser = user;
+    var keyRaw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
+    storeKey(toBase64(keyRaw), data.salt);
+    showToast('✅ Увійшов');
+    _profileData = test;
+    showProfileScreen();
+    loadTodayDiary();
+  } catch(e) {
+    showToast('❌ Невірний пароль');
+  }
 }
 
 function showRecovery() {
@@ -503,31 +522,30 @@ async function saveProfile() {
   _profileData.kcalNorm = parseFloat(document.getElementById('editNorm').value) || 0;
 
   var enc = await encryptObj(_profileData, _cryptoKey);
-  google.script.run
-    .withSuccessHandler(function() {
-      showToast('✅ Профіль збережено');
-      renderProfile();
-    })
-    .withFailureHandler(function(e) { showToast('❌ ' + e.message); })
-    .saveProfile(_currentUser, _saltBase64, enc, '', '');
+  var res = await apiPost('saveProfile', {
+    user: _currentUser,
+    salt: _saltBase64,
+    encrypted: enc,
+    recoverySalt: '',
+    recoveryEncrypted: ''
+  });
+  if (res.success) {
+    showToast('✅ Профіль збережено');
+    renderProfile();
+  } else {
+    showToast('❌ ' + (res.error || 'Помилка'));
+  }
 }
 
 async function loadProfileData() {
-  return new Promise(function(resolve) {
-    google.script.run
-      .withSuccessHandler(async function(data) {
-        if (data && data.encrypted && _cryptoKey) {
-          try {
-            _profileData = await decryptObj(data.encrypted, _cryptoKey);
-          } catch(e) { _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' }; }
-        } else {
-          _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
-        }
-        resolve();
-      })
-      .withFailureHandler(function() { _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' }; resolve(); })
-      .loadProfile(_currentUser);
-  });
+  var res = await apiGet('loadProfile', { user: _currentUser });
+  if (res.success && res.data && res.data.encrypted && _cryptoKey) {
+    try {
+      _profileData = await decryptObj(res.data.encrypted, _cryptoKey);
+    } catch(e) { _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' }; }
+  } else {
+    _profileData = { weight: 0, height: 0, kcalNorm: 0, photoUrl: '' };
+  }
 }
 
 function changePass() {
@@ -563,34 +581,39 @@ async function handleChangePass() {
   var newSaltB64 = toBase64(newSalt);
 
   // save
-  google.script.run
-    .withSuccessHandler(function() {
-      _cryptoKey = newKey;
-      _saltBase64 = newSaltB64;
-      var keyRaw = new Uint8Array();
-      crypto.subtle.exportKey('raw', newKey).then(function(r) {
-        storeKey(toBase64(new Uint8Array(r)), newSaltB64);
-      });
-      showToast('✅ Пароль змінено');
-      cancelChangePass();
-    })
-    .withFailureHandler(function(e) { showToast('❌ ' + e.message); })
-    .saveProfile(_currentUser, newSaltB64, newEncProfile, '', '');
+  var saveRes = await apiPost('saveProfile', {
+    user: _currentUser,
+    salt: newSaltB64,
+    encrypted: newEncProfile,
+    recoverySalt: '',
+    recoveryEncrypted: ''
+  });
+  if (saveRes.success) {
+    _cryptoKey = newKey;
+    _saltBase64 = newSaltB64;
+    var keyRaw = new Uint8Array(await crypto.subtle.exportKey('raw', newKey));
+    storeKey(toBase64(keyRaw), newSaltB64);
+    showToast('✅ Пароль змінено');
+    cancelChangePass();
+  } else {
+    showToast('❌ ' + (saveRes.error || 'Помилка'));
+  }
 }
 
 async function exportBackup() {
   showToast('⏳ Створення бекапу...');
-  google.script.run
-    .withSuccessHandler(function(jsonStr) {
-      var blob = new Blob([jsonStr], { type: 'application/json' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url; a.download = 'foodlook-backup.json'; a.click();
-      URL.revokeObjectURL(url);
-      showToast('✅ Бекап завантажено');
-    })
-    .withFailureHandler(function(e) { showToast('❌ ' + e.message); })
-    .exportAllData(_currentUser);
+  var res = await apiGet('exportAllData', { user: _currentUser });
+  if (res.success) {
+    var jsonStr = JSON.stringify(res.data);
+    var blob = new Blob([jsonStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'foodlook-backup.json'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Бекап завантажено');
+  } else {
+    showToast('❌ ' + (res.error || 'Помилка'));
+  }
 }
 
 // auto-backup check
@@ -622,20 +645,16 @@ async function loadDiaryForDate(date) {
     renderDiary(date, _diaryCache[date]);
     return;
   }
-  google.script.run
-    .withSuccessHandler(async function(rows) {
-      var items = [];
-      if (rows && rows.length > 0) {
-        try {
-          var obj = await decryptObj(rows[0].encrypted, _cryptoKey);
-          items = obj.items || [];
-        } catch(e) {}
-      }
-      _diaryCache[date] = items;
-      renderDiary(date, items);
-    })
-    .withFailureHandler(function() { renderDiary(date, []); })
-    .loadDiary(_currentUser, date, date);
+  var res = await apiGet('loadDiary', { user: _currentUser, fromDate: date, toDate: date });
+  var items = [];
+  if (res.success && res.data && res.data.length > 0) {
+    try {
+      var obj = await decryptObj(res.data[0].encrypted, _cryptoKey);
+      items = obj.items || [];
+    } catch(e) {}
+  }
+  _diaryCache[date] = items;
+  renderDiary(date, items);
 }
 
 function renderDiary(date, items) {
@@ -722,17 +741,18 @@ async function addDiaryEntry() {
   _diaryCache[date] = items;
 
   var enc = await encryptObj({ items: items }, _cryptoKey);
-  google.script.run
-    .withSuccessHandler(function() {
-      showToast('✅ Додано');
-      document.getElementById('diarySearch').value = '';
-      document.getElementById('diaryWeight').value = '';
-      _diarySelected = null;
-      document.getElementById('addDiaryBtn').disabled = true;
-      renderDiary(date, items);
-    })
-    .withFailureHandler(function(e) { showToast('❌ ' + e.message); items.pop(); })
-    .saveDiary(date, _currentUser, enc);
+  var res = await apiPost('saveDiary', { date: date, user: _currentUser, encrypted: enc });
+  if (res.success) {
+    showToast('✅ Додано');
+    document.getElementById('diarySearch').value = '';
+    document.getElementById('diaryWeight').value = '';
+    _diarySelected = null;
+    document.getElementById('addDiaryBtn').disabled = true;
+    renderDiary(date, items);
+  } else {
+    showToast('❌ ' + (res.error || 'Помилка'));
+    items.pop();
+  }
 }
 
 async function deleteDiaryItem(idx) {
@@ -742,10 +762,12 @@ async function deleteDiaryItem(idx) {
   items.splice(idx, 1);
   _diaryCache[date] = items;
   var enc = await encryptObj({ items: items }, _cryptoKey);
-  google.script.run
-    .withSuccessHandler(function() { renderDiary(date, items); })
-    .withFailureHandler(function() { showToast('❌ Помилка видалення'); })
-    .saveDiary(date, _currentUser, enc);
+  var res = await apiPost('saveDiary', { date: date, user: _currentUser, encrypted: enc });
+  if (res.success) {
+    renderDiary(date, items);
+  } else {
+    showToast('❌ ' + (res.error || 'Помилка'));
+  }
 }
 
 // ========== INFOGRAPHICS ==========
@@ -823,25 +845,19 @@ function renderWeekChart(el) {
   var norm = (_profileData && _profileData.kcalNorm) || 2000;
   var loaded = {};
 
-  Promise.all(dates.map(function(d) {
+  Promise.all(dates.map(async function(d) {
     if (_diaryCache[d]) {
       loaded[d] = _diaryCache[d];
-      return Promise.resolve();
+      return;
     }
-    return new Promise(function(resolve) {
-      google.script.run
-        .withSuccessHandler(function(rows) {
-          if (rows && rows.length > 0) {
-            decryptObj(rows[0].encrypted, _cryptoKey).then(function(obj) {
-              _diaryCache[d] = obj.items || [];
-              loaded[d] = _diaryCache[d];
-              resolve();
-            }).catch(function() { loaded[d] = []; resolve(); });
-          } else { loaded[d] = []; resolve(); }
-        })
-        .withFailureHandler(function() { loaded[d] = []; resolve(); })
-        .loadDiary(_currentUser, d, d);
-    });
+    var res = await apiGet('loadDiary', { user: _currentUser, fromDate: d, toDate: d });
+    if (res.success && res.data && res.data.length > 0) {
+      try {
+        var obj = await decryptObj(res.data[0].encrypted, _cryptoKey);
+        _diaryCache[d] = obj.items || [];
+        loaded[d] = _diaryCache[d];
+      } catch(e) { loaded[d] = []; }
+    } else { loaded[d] = []; }
   })).then(function() {
     el.innerHTML = '<div style="font-size:14px;font-weight:600;margin-bottom:4px;text-align:center;">Останні 7 днів</div>';
     var dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
