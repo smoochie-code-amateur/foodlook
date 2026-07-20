@@ -180,7 +180,13 @@
     </div>
 
     <div id="profileScreen" class="card" style="display:none;">
-      <img id="profilePhoto" class="profile-photo" src="" alt="Фото" onclick="changePhoto()">
+      <img id="profilePhoto" class="profile-photo" src="" alt="Фото">
+      <div class="flex-row" style="justify-content:center;margin-bottom:10px;">
+        <button class="btn-outline" onclick="pickPhoto()" style="font-size:12px;width:auto;padding:6px 12px;">📷 Фото</button>
+        <button class="btn-outline" onclick="setPhotoUrl()" style="font-size:12px;width:auto;padding:6px 12px;">🔗 URL</button>
+        <button class="btn-outline" onclick="removePhoto()" style="font-size:12px;width:auto;padding:6px 12px;color:#f44336;">🗑</button>
+      </div>
+      <input type="file" id="photoFileInput" accept="image/*" style="display:none;">
       <div class="profile-stats">
         <div><span class="num" id="pWeight">—</span><span class="lbl">Вага (кг)</span></div>
         <div><span class="num" id="pHeight">—</span><span class="lbl">Зріст (см)</span></div>
@@ -321,7 +327,7 @@ async function login(pass) {
     var salt = genSalt();
     localStorage.setItem('foodlook_salt', toB64(salt));
     _key = await deriveKey(pass, salt);
-    _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
+    _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
     _diary = {};
     await saveLocal();
     return true;
@@ -330,7 +336,7 @@ async function login(pass) {
   _key = await deriveKey(pass, salt);
   try {
     var pStr = localStorage.getItem('foodlook_profile');
-    _profile = pStr ? await decrypt(pStr, _key) : { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
+    _profile = pStr ? await decrypt(pStr, _key) : { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
     var dStr = localStorage.getItem('foodlook_diary');
     _diary = dStr ? await decrypt(dStr, _key) : {};
     return true;
@@ -367,6 +373,7 @@ document.getElementById('createPass').addEventListener('keydown', function(e) {
 document.getElementById('createPassConfirm').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') handleCreatePass();
 });
+document.getElementById('photoFileInput').addEventListener('change', handlePhotoFile);
 
 // ⏎ на diaryWeight теж додає
 document.getElementById('diaryWeight').addEventListener('keydown', function(e) {
@@ -375,7 +382,7 @@ document.getElementById('diaryWeight').addEventListener('keydown', function(e) {
 
 // ========== PROFILE ==========
 function showProfileScreen() {
-  if (!_profile) _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
+  if (!_profile) _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
   document.getElementById('createPassScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('profileScreen').style.display = 'block';
@@ -440,14 +447,53 @@ function renderProfile() {
   document.getElementById('editNorm').value = _profile.kcalNorm || '';
   document.getElementById('editDeficit').value = _profile.deficit || 0;
   var photo = document.getElementById('profilePhoto');
-  if (_profile.photoUrl) { photo.src = _profile.photoUrl; photo.style.background = ''; }
+  if (_profile.photo) { photo.src = _profile.photo; photo.style.background = ''; }
+  else if (_profile.photoUrl) { photo.src = _profile.photoUrl; photo.style.background = ''; }
   else { photo.src = ''; photo.style.background = '#e0e0e0'; }
   document.getElementById('bmrResult').textContent = '';
 }
 
-function changePhoto() {
-  var url = prompt('📷 URL фото (або порожньо — прибрати):', _profile.photoUrl || '');
-  if (url !== null) { _profile.photoUrl = url; renderProfile(); }
+function pickPhoto() {
+  document.getElementById('photoFileInput').click();
+}
+
+function handlePhotoFile(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var maxSize = 200;
+      var w = img.width, h = img.height;
+      if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
+      else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      _profile.photo = canvas.toDataURL('image/jpeg', 0.7);
+      _profile.photoUrl = '';
+      renderProfile();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function setPhotoUrl() {
+  var url = prompt('🔗 Введіть URL фото:', _profile.photoUrl || '');
+  if (url === null) return;
+  if (url) { _profile.photoUrl = url; _profile.photo = ''; }
+  else { _profile.photoUrl = ''; }
+  renderProfile();
+}
+
+function removePhoto() {
+  _profile.photo = '';
+  _profile.photoUrl = '';
+  renderProfile();
 }
 
 async function saveProfile() {
@@ -536,7 +582,7 @@ async function doImport(jsonStr, pass) {
       _key = impKey;
     }
 
-    _profile = data.profile || { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
+    _profile = data.profile || { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
     _diary = data.diary || {};
     await saveLocal();
 
