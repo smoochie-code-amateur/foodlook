@@ -165,6 +165,7 @@
         Якщо забудете пароль, дані буде неможливо відновити.
         <br>📌 Регулярно створюйте бекап через <strong>Експорт даних</strong>.
       </p>
+      <button class="btn-outline" onclick="showImport()" style="font-size:12px;">📂 Відновити з бекапу</button>
       <button class="btn-outline" onclick="clearAllData()" style="font-size:12px;color:#f44336;">🧹 Очистити всі дані</button>
     </div>
 
@@ -484,7 +485,7 @@ function calcBMR() {
 
 // ========== EXPORT / IMPORT ==========
 function showExport() {
-  var pass = prompt('📦 Введіть пароль для шифрування бекапу:');
+  var pass = prompt('📦 Введіть ваш пароль профілю для шифрування бекапу:');
   if (!pass) return;
   doExport(pass);
 }
@@ -513,7 +514,7 @@ function showImport() {
     if (!file) return;
     var reader = new FileReader();
     reader.onload = function(ev) {
-      var pass = prompt('📂 Введіть пароль для розшифрування бекапу:');
+      var pass = prompt('📂 Введіть ваш пароль профілю для розшифрування:');
       if (!pass) return;
       doImport(ev.target.result, pass);
     };
@@ -529,21 +530,27 @@ async function doImport(jsonStr, pass) {
     var impKey = await deriveKey(pass, salt);
     var data = await decrypt(pkg.data, impKey);
 
+    var wasLoggedIn = !!_key;
     if (!_key) {
-      // set up if not logged in
-      localStorage.setItem('foodlook_salt', toB64(genSalt()));
-      var ls = fromB64(localStorage.getItem('foodlook_salt'));
-      _key = await deriveKey(prompt('🔐 Пароль для локального входу (придумайте):'), ls);
+      localStorage.setItem('foodlook_salt', toB64(salt));
+      _key = impKey;
     }
 
     _profile = data.profile || { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photoUrl: '' };
     _diary = data.diary || {};
     await saveLocal();
-    showToast('✅ Дані імпортовано');
-    if (document.getElementById('profileScreen').style.display === 'block') renderProfile();
-    loadTodayDiary();
+
+    if (!wasLoggedIn) {
+      showToast('✅ Дані відновлено!');
+      showProfileScreen();
+      loadTodayDiary();
+    } else {
+      showToast('✅ Дані імпортовано');
+      renderProfile();
+      loadTodayDiary();
+    }
   } catch(e) {
-    showToast('❌ Помилка: невірний пароль або пошкоджений файл');
+    showToast('❌ Невірний пароль або пошкоджений файл');
   }
 }
 
