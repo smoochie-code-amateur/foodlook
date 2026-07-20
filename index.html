@@ -173,11 +173,14 @@
   <!-- TAB: Profile -->
   <div id="tabProfile" style="display:none;">
     <div id="loginScreen" class="card">
-      <h1 style="font-size:18px;">🔐 Вхід</h1>
-      <input type="text" id="loginUser" placeholder="Ім'я користувача" value="Мама">
-      <input type="password" id="loginPass" placeholder="Пароль">
-      <button class="btn-primary" onclick="handleLogin()">Увійти</button>
-      <button class="btn-outline" onclick="showRecovery()" style="font-size:13px;">Забули пароль?</button>
+      <h1 style="font-size:18px;">🔐 Вхід / Реєстрація</h1>
+      <p style="font-size:13px;color:#888;margin-bottom:12px;text-align:center;">
+        Якщо профіль ще не створено — введіть пароль і він створиться автоматично.
+      </p>
+      <input type="text" id="loginUser" placeholder="Ваше ім'я" value="Мама">
+      <input type="password" id="loginPass" placeholder="Пароль (запам'ятайте його)">
+      <button class="btn-primary" onclick="handleLogin()">🚀 Увійти / Створити</button>
+      <button class="btn-outline" onclick="showRecovery()" style="font-size:13px;">🔑 Забули пароль?</button>
     </div>
 
     <div id="recoveryScreen" class="card" style="display:none;">
@@ -358,9 +361,8 @@ async function firstTimeSetup(user, password, recoveryPhrase) {
   _cryptoKey = await deriveKey(password, salt);
   _saltBase64 = toBase64(salt);
   _currentUser = user;
-  storeKey(_saltBase64, _saltBase64);
-  var keyStr = toBase64(new Uint8Array(await crypto.subtle.exportKey('raw', _cryptoKey)));
-  storeKey(keyStr, _saltBase64);
+  var keyRaw = new Uint8Array(await crypto.subtle.exportKey('raw', _cryptoKey));
+  storeKey(toBase64(keyRaw), _saltBase64);
 
   var recoverySalt = genSalt();
   var recoveryKey = await deriveKey(recoveryPhrase, recoverySalt);
