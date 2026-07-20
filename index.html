@@ -6,6 +6,7 @@
   <title>Калькулятор Калорій</title>
   <link rel="icon" href="food.png" type="image/png">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -102,7 +103,10 @@
       <div class="flex-row">
         <input type="text" id="barcodeInput" placeholder="Введи або відскануй...">
         <button class="btn-outline" onclick="toggleScanner()">📷</button>
+        <button class="btn-outline" onclick="document.getElementById('ocrFile').click()">📄</button>
+        <input type="file" id="ocrFile" accept="image/*" style="display:none">
       </div>
+      <div id="ocrProgress" style="display:none;font-size:12px;color:#999;text-align:center;margin:4px 0;"></div>
       <div id="scanner"></div>
 
       <label for="weightInput">⚖️ Вага (г)</label>
@@ -133,7 +137,7 @@
   <script>
     const FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
     const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=303617623&single=true&output=tsv';
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwsa8mco0JqfU_7npGOwcTExO1jjD6KN7XTtYaz5BDsz854SyaqLUjQL8Rq6iu6XbjTdQ/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz8hJ0imA-w7qbqjjOK1BcymP_MoX69ifsh-bu-MORLTp9LW8OyFi50IdYI070BWizi7A/exec';
 
     let html5QrCode = null;
     let scannerRunning = false;
@@ -281,6 +285,55 @@
         notFoundMsg.style.display = 'block';
       }
     }
+
+    // OCR
+    document.getElementById('ocrFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const prog = document.getElementById('ocrProgress');
+      prog.style.display = 'block';
+      prog.textContent = '🔍 Розпізнавання...';
+      Tesseract.recognize(
+        file,
+        'ukr+rus+eng',
+        { logger: function(m) {
+          if (m.status === 'recognizing text') {
+            prog.textContent = '🔍 ' + Math.round(m.progress * 100) + '%';
+          }
+        }}
+      ).then(function(r) {
+        prog.style.display = 'none';
+        const text = r.data.text;
+        if (!text.trim()) { showToast('❌ Не вдалось прочитати текст'); return; }
+        const lines = text.split('\n').filter(Boolean);
+        const found = [];
+        for (var i = 0; i < items.length; i++) {
+          var itemName = items[i].name.toLowerCase();
+          for (var j = 0; j < lines.length; j++) {
+            if (lines[j].toLowerCase().includes(itemName)) {
+              found.push(items[i]);
+              break;
+            }
+          }
+        }
+        if (found.length === 0) {
+          searchInput.value = text.slice(0, 100);
+          doSearch();
+          showToast('📄 Текст прочитано, продукт не знайдено', 3000);
+        } else if (found.length === 1) {
+          selectItem(found[0]);
+          showToast('✅ Знайдено: ' + found[0].name, 2000);
+        } else {
+          searchInput.value = found[0].name.slice(0, 20);
+          doSearch();
+          showToast('📄 Знайдено ' + found.length + ' збігів, обери зі списку', 2500);
+        }
+      }).catch(function(err) {
+        prog.style.display = 'none';
+        showToast('❌ Помилка OCR: ' + err.message);
+      });
+      this.value = '';
+    });
 
     // СКАНЕР
     function toggleScanner() {
