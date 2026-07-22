@@ -7,103 +7,391 @@
   <link rel="icon" href="food.png" type="image/png">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f5f5f5; padding: 12px; max-width: 480px;
-      margin: 0 auto; min-height: 100vh;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #FDF5EC;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      color: #3D2B1F;
     }
-    h1 { font-size: 20px; color: #333; margin-bottom: 12px; text-align: center; }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #3D2B1F;
+      margin-bottom: 14px;
+      text-align: center;
+      letter-spacing: -0.3px;
+    }
+
     .card {
-      background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 12px rgba(61, 43, 31, 0.06);
+      border: 1px solid rgba(61, 43, 31, 0.04);
     }
-    label { font-size: 13px; font-weight: 600; color: #555; display: block; margin-bottom: 3px; }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8B7355;
+      display: block;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
     input, select {
-      width: 100%; padding: 10px 12px; font-size: 16px; border: 1px solid #ddd;
-      border-radius: 8px; outline: none; background: #fafafa; margin-bottom: 10px;
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: 'DM Sans', sans-serif;
+      border: 1.5px solid #E8DDD0;
+      border-radius: 12px;
+      outline: none;
+      background: #FDFAF5;
+      margin-bottom: 12px;
+      color: #3D2B1F;
+      transition: border-color 0.2s, box-shadow 0.2s;
       -webkit-appearance: none;
     }
-    input:focus, select:focus { border-color: #2196F3; background: #fff; }
+
+    input:focus, select:focus {
+      border-color: #E8735A;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(232, 115, 90, 0.12);
+    }
+
+    input::placeholder { color: #BBA98E; }
+
     button {
-      width: 100%; padding: 12px; font-size: 16px; font-weight: 600;
-      border: none; border-radius: 8px; cursor: pointer; margin-bottom: 6px;
+      width: 100%;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'DM Sans', sans-serif;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+      letter-spacing: 0.2px;
     }
-    .btn-primary { background: #2196F3; color: #fff; }
-    .btn-primary:hover { background: #1976D2; }
-    .btn-green { background: #4CAF50; color: #fff; }
-    .btn-green:hover { background: #388E3C; }
-    .btn-orange { background: #FF9800; color: #fff; }
-    .btn-orange:hover { background: #F57C00; }
-    .btn-red { background: #f44336; color: #fff; }
-    .btn-red:hover { background: #d32f2f; }
-    .btn-outline { background: none; border: 1px solid #ddd; color: #333; }
-    .btn-outline:hover { background: #f0f0f0; }
-    .row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #E8735A, #D4613F);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(232, 115, 90, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #D4613F, #C05535);
+      box-shadow: 0 6px 20px rgba(232, 115, 90, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-green {
+      background: linear-gradient(135deg, #2D7D5F, #1F6B4E);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(45, 125, 95, 0.25);
+    }
+    .btn-green:hover {
+      background: linear-gradient(135deg, #1F6B4E, #185A40);
+      box-shadow: 0 6px 20px rgba(45, 125, 95, 0.35);
+      transform: translateY(-1px);
+    }
+    .btn-green:active { transform: translateY(0); }
+
+    .btn-orange {
+      background: linear-gradient(135deg, #E8A849, #D4952E);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(232, 168, 73, 0.25);
+    }
+    .btn-orange:hover {
+      background: linear-gradient(135deg, #D4952E, #C08820);
+      box-shadow: 0 6px 20px rgba(232, 168, 73, 0.35);
+      transform: translateY(-1px);
+    }
+    .btn-orange:active { transform: translateY(0); }
+
+    .btn-red {
+      background: linear-gradient(135deg, #D4564E, #C04038);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(212, 86, 78, 0.25);
+    }
+    .btn-red:hover {
+      background: linear-gradient(135deg, #C04038, #A83530);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid #E8DDD0;
+      color: #6B5744;
+    }
+    .btn-outline:hover {
+      background: #FDFAF5;
+      border-color: #D4C4B0;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #F3EDE4;
+      font-size: 15px;
+    }
     .row:last-child { border-bottom: none; }
-    .val { font-weight: 700; color: #2196F3; }
-    .badge {
-      display: inline-block; background: #E3F2FD; color: #1565C0;
-      padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;
+
+    .val {
+      font-weight: 700;
+      color: #E8735A;
     }
-    .flex-row { display: flex; gap: 6px; align-items: center; }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #FDF0E6, #FAE4D4);
+      color: #C0603A;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    .flex-row { display: flex; gap: 8px; align-items: center; }
     .flex-row input { flex: 1; margin-bottom: 0; min-width: 0; }
-    .flex-row button { width: 48px; padding: 10px 0; margin-bottom: 0; font-size: 20px; }
-    #productSelect { max-height: 150px; }
+    .flex-row button {
+      width: 48px;
+      padding: 12px 0;
+      margin-bottom: 0;
+      font-size: 18px;
+      border-radius: 12px;
+    }
+
+    #productSelect {
+      max-height: 150px;
+      border-radius: 12px;
+    }
+
     #scanner {
-      width: 100%; max-width: 100%; margin: 10px 0; display: none;
-      overflow: hidden; border-radius: 8px;
+      width: 100%;
+      max-width: 100%;
+      margin: 10px 0;
+      display: none;
+      overflow: hidden;
+      border-radius: 12px;
     }
     #scanner video { width: 100% !important; max-width: 100% !important; height: auto !important; }
+
     .toast {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #333; color: #fff; padding: 10px 20px; border-radius: 8px;
-      font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-      z-index: 999; text-align: center; max-width: 90%;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #3D2B1F;
+      color: #FDF5EC;
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 999;
+      text-align: center;
+      max-width: 90%;
+      box-shadow: 0 8px 30px rgba(61, 43, 31, 0.25);
     }
     .toast.show { opacity: 1; }
-    .not-found { text-align: center; color: #999; font-size: 14px; padding: 6px; }
-    .loading { text-align: center; color: #999; font-size: 14px; padding: 20px; }
-    .tab-bar { display: flex; gap: 4px; margin-bottom: 10px; }
+
+    .not-found {
+      text-align: center;
+      color: #BBA98E;
+      font-size: 14px;
+      padding: 8px;
+    }
+
+    .loading {
+      text-align: center;
+      color: #8B7355;
+      font-size: 15px;
+      padding: 40px 20px;
+      font-family: 'Playfair Display', serif;
+    }
+
+    /* TAB BAR */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 14px;
+      background: #F3EDE4;
+      border-radius: 14px;
+      padding: 4px;
+    }
     .tab-bar button {
-      flex: 1; padding: 10px; font-size: 13px; font-weight: 600;
-      background: #e0e0e0; color: #555; border-radius: 8px 8px 0 0;
-      border: none; cursor: pointer; margin-bottom: 0;
+      flex: 1;
+      padding: 11px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      color: #8B7355;
+      border-radius: 11px;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 0;
+      transition: all 0.25s;
     }
-    .tab-bar button.active { background: #fff; color: #2196F3; }
+    .tab-bar button.active {
+      background: #fff;
+      color: #E8735A;
+      box-shadow: 0 2px 8px rgba(61, 43, 31, 0.08);
+    }
+    .tab-bar button:hover:not(.active) {
+      color: #6B5744;
+    }
+
+    /* PROFILE */
     .profile-photo {
-      width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
-      margin: 0 auto 10px; display: block; background: #e0e0e0;
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 auto 12px;
+      display: block;
+      background: #F3EDE4;
+      border: 3px solid #E8DDD0;
     }
-    .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center; margin-bottom: 10px; }
-    .profile-stats div { background: #f5f5f5; padding: 8px; border-radius: 8px; }
-    .profile-stats .num { font-size: 18px; font-weight: 700; color: #2196F3; display: block; }
-    .profile-stats .lbl { font-size: 11px; color: #888; }
-    .diary-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; align-items: center; }
-    .diary-item .diary-name { flex: 1; }
-    .diary-item .diary-kkal { font-weight: 600; color: #333; min-width: 50px; text-align: right; }
-    .diary-item .diary-del { color: #f44336; cursor: pointer; padding: 0 4px; font-size: 16px; }
-    .chart-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 12px; }
-    .chart-row .bar { height: 14px; border-radius: 3px; min-width: 2px; }
-    .chart-row .bar-label { min-width: 40px; text-align: right; color: #888; }
-    .ring-wrap { display: flex; justify-content: center; gap: 20px; margin: 10px 0; flex-wrap: wrap; }
-    .ring-label { text-align: center; font-size: 11px; color: #888; margin-top: 2px; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .profile-stats div {
+      background: #FDFAF5;
+      padding: 10px 6px;
+      border-radius: 12px;
+      border: 1px solid #F3EDE4;
+    }
+    .profile-stats .num {
+      font-size: 18px;
+      font-weight: 700;
+      color: #E8735A;
+      display: block;
+      font-family: 'Playfair Display', serif;
+    }
+    .profile-stats .lbl {
+      font-size: 10px;
+      color: #8B7355;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    /* DIARY */
+    .diary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #F3EDE4;
+      font-size: 14px;
+      align-items: center;
+    }
+    .diary-item .diary-name { flex: 1; color: #5A4636; }
+    .diary-item .diary-kkal {
+      font-weight: 600;
+      color: #E8735A;
+      min-width: 55px;
+      text-align: right;
+      font-family: 'Playfair Display', serif;
+    }
+    .diary-item .diary-del {
+      color: #D4564E;
+      cursor: pointer;
+      padding: 0 6px;
+      font-size: 14px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .diary-item .diary-del:hover { opacity: 1; }
+
+    /* CHARTS */
+    .chart-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+    .chart-row .bar {
+      height: 12px;
+      border-radius: 6px;
+      min-width: 2px;
+      transition: width 0.4s ease;
+    }
+    .chart-row .bar-label { min-width: 40px; text-align: right; color: #8B7355; font-weight: 500; }
+
+    .ring-wrap {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .ring-label {
+      text-align: center;
+      font-size: 11px;
+      color: #8B7355;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .form-grid .full { grid-column: 1 / -1; }
+
+    /* SUGGEST DROPDOWN */
+    #diarySuggest > div {
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    #diarySuggest > div:hover {
+      background: #FDFAF5;
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E8DDD0; border-radius: 3px; }
+
+    /* SELECTION */
+    ::selection { background: #E8735A; color: #fff; }
+
     @media (max-width: 400px) {
-      body { padding: 8px; }
-      .card { padding: 10px; }
-      input, select { font-size: 14px; padding: 8px; margin-bottom: 8px; }
-      button { padding: 10px; font-size: 14px; }
-      .flex-row button { width: 44px; padding: 8px 0; font-size: 18px; }
-      h1 { font-size: 17px; }
+      body { padding: 10px; }
+      .card { padding: 12px; }
+      input, select { font-size: 14px; padding: 10px; margin-bottom: 10px; }
+      button { padding: 11px; font-size: 14px; }
+      .flex-row button { width: 44px; padding: 10px 0; font-size: 16px; }
+      h1 { font-size: 19px; }
       .row { font-size: 14px; }
+      .tab-bar button { font-size: 12px; padding: 9px 6px; }
     }
   </style>
 </head>
 <body>
 
-<div id="loadingMsg" class="loading">⏳ Завантаження...</div>
+<div id="loadingMsg" class="loading">🍽️ Завантаження...</div>
 
 <div id="content" style="display:none;">
 
@@ -135,7 +423,7 @@
     </div>
 
     <div class="card" id="resultCard" style="display:none;">
-      <div id="productName" style="font-size:18px;font-weight:700;margin-bottom:8px;"></div>
+      <div id="productName" style="font-size:18px;font-weight:700;margin-bottom:8px;font-family:'Playfair Display',serif;color:#3D2B1F;"></div>
       <div class="row"><span>Ккал</span><span class="val" id="resKkal">0</span></div>
       <div class="row"><span>Білки</span><span class="val" id="resProt">0</span></div>
       <div class="row"><span>Жири</span><span class="val" id="resFat">0</span></div>
@@ -147,7 +435,7 @@
       ➕ Додати продукт чи рецепт
     </button>
 
-    <p style="text-align:center;font-size:12px;color:#999;margin-top:12px;">
+    <p style="text-align:center;font-size:12px;color:#BBA98E;margin-top:14px;">
       База даних продуктів створена у Google Sheets.
     </p>
   </div>
@@ -155,11 +443,11 @@
   <!-- TAB: Profile -->
   <div id="tabProfile" style="display:none;">
     <div id="createPassScreen" class="card" style="display:none;">
-      <h1 style="font-size:18px;">🔐 Створіть пароль для профілю</h1>
+      <h1 style="font-size:18px;font-family:'Playfair Display',serif;">🔐 Створіть пароль для профілю</h1>
       <input type="password" id="createPass" placeholder="Придумайте пароль">
       <input type="password" id="createPassConfirm" placeholder="Повторіть пароль">
       <button class="btn-primary" onclick="handleCreatePass()">🔐 Створити профіль</button>
-      <p style="font-size:12px;color:#888;margin-top:10px;line-height:1.5;">
+      <p style="font-size:12px;color:#8B7355;margin-top:10px;line-height:1.5;">
         ⚠️ Дані зберігаються <strong>локально</strong> у вашому браузері.
         Пароль не зберігається — він використовується для шифрування.
         Якщо забудете пароль, дані буде неможливо відновити.
@@ -170,10 +458,10 @@
     </div>
 
     <div id="loginScreen" class="card" style="display:none;">
-      <h1 style="font-size:18px;">🔐 Введіть пароль</h1>
+      <h1 style="font-size:18px;font-family:'Playfair Display',serif;">🔐 Введіть пароль</h1>
       <input type="password" id="loginPass" placeholder="Пароль">
       <button class="btn-primary" onclick="handleLogin()">🚀 Увійти</button>
-      <p style="font-size:12px;color:#888;margin-top:8px;">
+      <p style="font-size:12px;color:#8B7355;margin-top:8px;">
         ⚠️ Дані зберігаються локально. Забули пароль? Натисніть "Очистити".
       </p>
       <button class="btn-outline" onclick="clearAllData()" style="font-size:12px;color:#f44336;">🧹 Очистити всі дані</button>
@@ -221,7 +509,7 @@
               <option value="20">+20% (сильний набір)</option>
             </select>
           </div>
-          <div id="bmrResult" style="font-size:13px;color:#888;margin-top:4px;"></div>
+          <div id="bmrResult" style="font-size:13px;color:#8B7355;margin-top:4px;"></div>
         </div>
       </div>
       <button class="btn-green" onclick="saveProfile()">💾 Зберегти профіль</button>
@@ -257,7 +545,7 @@
     </div>
 
     <div class="card" id="infocard" style="display:none;">
-      <h1 style="font-size:16px;margin-bottom:6px;">📊 Інфографіка</h1>
+      <h1 style="font-size:16px;margin-bottom:6px;font-family:'Playfair Display',serif;">📊 Інфографіка</h1>
       <div id="ringChart" class="ring-wrap"></div>
       <div id="weekChart" style="margin-top:6px;"></div>
     </div>
@@ -449,7 +737,7 @@ function renderProfile() {
   var photo = document.getElementById('profilePhoto');
   if (_profile.photo) { photo.src = _profile.photo; photo.style.background = ''; }
   else if (_profile.photoUrl) { photo.src = _profile.photoUrl; photo.style.background = ''; }
-  else { photo.src = ''; photo.style.background = '#e0e0e0'; }
+  else { photo.src = ''; photo.style.background = '#F3EDE4'; }
   document.getElementById('bmrResult').textContent = '';
 }
 
@@ -635,7 +923,7 @@ function renderDiary(date) {
   var items = getDiaryItems(date);
   if (items.length === 0) {
     summary.style.display = 'none';
-    el.innerHTML = '<div style="text-align:center;color:#999;font-size:14px;padding:10px;">Записів немає</div>';
+    el.innerHTML = '<div style="text-align:center;color:#BBA98E;font-size:14px;padding:12px;font-style:italic;">Записів немає</div>';
     renderInfographics([]);
     return;
   }
@@ -676,7 +964,7 @@ document.getElementById('diarySearch').addEventListener('input', function() {
   var filtered = items.filter(function(p) { return p.name.toLowerCase().includes(q); }).slice(0, 10);
   filtered.forEach(function(p) {
     var d = document.createElement('div');
-    d.style.cssText = 'padding:6px 8px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:14px;';
+    d.style.cssText = 'padding:8px 10px;cursor:pointer;border-bottom:1px solid #F3EDE4;font-size:14px;border-radius:8px;transition:background 0.15s;';
     d.textContent = p.name;
     d.onclick = function() {
       document.getElementById('diarySearch').value = p.name;
@@ -732,15 +1020,15 @@ function renderInfographics(items) {
   var ring = document.getElementById('ringChart');
   if (total > 0) {
     ring.innerHTML = '';
-    ring.appendChild(makeRing(tProt / total * 100, '#4CAF50', 'Білки'));
-    ring.appendChild(makeRing(tFat / total * 100, '#FF9800', 'Жири'));
-    ring.appendChild(makeRing(tCarbs / total * 100, '#2196F3', 'Вуглеводи'));
+    ring.appendChild(makeRing(tProt / total * 100, '#2D7D5F', 'Білки'));
+    ring.appendChild(makeRing(tFat / total * 100, '#E8A849', 'Жири'));
+    ring.appendChild(makeRing(tCarbs / total * 100, '#E8735A', 'Вуглеводи'));
   }
   var weekEl = document.getElementById('weekChart');
   if (_profile && _profile.kcalNorm) {
     renderWeekChart(weekEl);
   } else {
-    weekEl.innerHTML = '<div style="text-align:center;color:#999;font-size:13px;">Встановіть норму ккал в профілі</div>';
+    weekEl.innerHTML = '<div style="text-align:center;color:#BBA98E;font-size:13px;font-style:italic;">Встановіть норму ккал в профілі</div>';
   }
 }
 
@@ -750,7 +1038,7 @@ function makeRing(pct, color, label) {
   var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', '90'); svg.setAttribute('height', '90'); svg.setAttribute('viewBox', '0 0 36 36');
   var r = 15.9, circ = 2 * Math.PI * r;
-  ['#e0e0e0', color].forEach(function(stroke, i) {
+    ['#F3EDE4', color].forEach(function(stroke, i) {
     var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '18'); circle.setAttribute('cy', '18'); circle.setAttribute('r', '' + r);
     circle.setAttribute('fill', 'none'); circle.setAttribute('stroke', stroke); circle.setAttribute('stroke-width', '3');
@@ -778,7 +1066,7 @@ function renderWeekChart(el) {
     dates.push(d.toISOString().slice(0,10));
   }
 
-  el.innerHTML = '<div style="font-size:14px;font-weight:600;margin-bottom:4px;text-align:center;">Останні 7 днів</div>';
+  el.innerHTML = '<div style="font-size:14px;font-weight:600;margin-bottom:6px;text-align:center;font-family:Playfair Display,serif;color:#3D2B1F;">Останні 7 днів</div>';
   var dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
   dates.forEach(function(d) {
     var items = getDiaryItems(d);
@@ -787,7 +1075,7 @@ function renderWeekChart(el) {
     var pct = Math.min(100, kkal / norm * 100);
     var row = document.createElement('div');
     row.className = 'chart-row';
-    var color = pct > 100 ? '#f44336' : (pct > 80 ? '#4CAF50' : '#FF9800');
+    var color = pct > 100 ? '#D4564E' : (pct > 80 ? '#2D7D5F' : '#E8A849');
     row.innerHTML = '<span style="min-width:40px;">' + dayNames[new Date(d).getDay()] + '</span>' +
       '<div class="bar" style="width:' + Math.max(2, pct) + '%;background:' + color + ';"></div>' +
       '<span class="bar-label">' + Math.round(kkal) + '</span>';
@@ -871,7 +1159,7 @@ function doSearch() {
   const filtered = items.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.includes(q)));
   if (filtered.length === 0) {
     productList.style.display = 'none';
-    notFoundMsg.innerHTML = '❌ Немає в базі. <a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#2196F3;">➕ Додати</a>';
+    notFoundMsg.innerHTML = '❌ Немає в базі. <a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#E8735A;font-weight:600;">➕ Додати</a>';
     notFoundMsg.style.display = 'block'; currentItem = null; document.getElementById('resultCard').style.display = 'none'; return;
   }
   if (filtered.length > 20) { productList.style.display = 'none'; notFoundMsg.style.display = 'none'; return; }
@@ -911,7 +1199,7 @@ function lookupBarcode(code) {
   if (p) { selectItem(p); showToast('✅ ' + p.name, 2000); }
   else {
     currentItem = null; document.getElementById('resultCard').style.display = 'none';
-    notFoundMsg.innerHTML = '📷 Код: ' + code + '<br><a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#2196F3;">➕ Додати</a>';
+    notFoundMsg.innerHTML = '📷 Код: ' + code + '<br><a href="javascript:void(0)" onclick="window.open(WEB_APP_URL,\'_blank\')" style="color:#E8735A;font-weight:600;">➕ Додати</a>';
     notFoundMsg.style.display = 'block';
   }
 }
