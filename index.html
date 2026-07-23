@@ -822,11 +822,6 @@ async function sha256str(str) {
   var hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
-    if (statusEl) statusEl.innerHTML = '● Синхронізовано ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    // Silent fail on auto-sync
-  }
-}
 
 var CATEGORY_EMOJI = {
   'Овочі':'🥬','Фрукти':'🍎','Ягоди':'🫐','Горіхи та сухофрукти':'🥜','Гриби':'🍄',
