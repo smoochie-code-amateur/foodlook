@@ -177,7 +177,7 @@
           </div>
 
           <div class="card">
-            <img id="profilePhoto" class="profile-photo" src="" alt="Фото">
+            <img id="profilePhoto" class="profile-photo" src="" alt="Фото" onerror="this.style.backgroundImage='url(assets/user-fill.svg)';this.src='';">
             <div class="flex-row" style="justify-content:center;margin-bottom:16px;">
               <button class="btn-outline btn-icon-sm" onclick="pickPhoto()" title="Фото"><img src="assets/camera.svg" width="18" height="18" alt=""></button>
               <button class="btn-outline btn-icon-sm" onclick="setPhotoUrl()" title="URL"><img src="assets/link.svg" width="18" height="18" alt=""></button>
