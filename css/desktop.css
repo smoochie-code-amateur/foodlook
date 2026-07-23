@@ -1,0 +1,181 @@
+/* ========== DESKTOP LAYOUT ========== */
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== HEADER ========== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 14px 32px;
+  background: var(--card);
+  border-bottom: 3px solid var(--primary);
+  box-shadow: 0 4px 20px rgba(43, 24, 16, 0.08);
+  gap: 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.header-logo {
+  width: 42px;
+  height: 42px;
+}
+
+.header-title {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+}
+
+/* ========== HEADER NAV ========== */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.header-nav a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-nav a:hover {
+  background: rgba(212, 66, 57, 0.06);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.header-nav a.active {
+  background: rgba(212, 66, 57, 0.1);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.header-nav a img {
+  flex-shrink: 0;
+}
+
+/* ========== HEADER RIGHT ========== */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #F0E8DE, #E8DDD0);
+  border: 2px solid var(--primary);
+}
+
+.header-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ========== MAIN CONTENT ========== */
+.main-content {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ========== PAGE HEADER ========== */
+.page-header {
+  margin-bottom: 28px;
+}
+
+.page-header h2 {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.page-header .subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ========== WIDE CARDS (for desktop) ========== */
+.card {
+  max-width: 100%;
+}
+
+/* ========== TWO-COLUMN LAYOUT ========== */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.two-col .card {
+  margin-bottom: 0;
+}
+
+/* ========== SCROLLABLE CARD CONTENT ========== */
+.card-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* ========== RESPONSIVE: tablet ========== */
+@media (max-width: 1024px) {
+  .site-header {
+    padding: 12px 20px;
+  }
+  .header-nav a {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .main-content {
+    padding: 24px 28px;
+  }
+}
+
+/* ========== RESPONSIVE: small tablet → mobile ========== */
+@media (max-width: 768px) {
+  .site-header {
+    display: none;
+  }
+  .main-content {
+    padding: 16px;
+    max-width: 480px;
+  }
+}
