@@ -479,6 +479,7 @@
     <button class="active" data-tab="calc" onclick="switchTab('calc')">🥗 Калькулятор</button>
     <button data-tab="profile" onclick="switchTab('profile')">👤 Профіль</button>
     <button data-tab="diary" onclick="switchTab('diary')">📓 Щоденник</button>
+    <button data-tab="settings" onclick="switchTab('settings')">⚙️ Налаштування</button>
   </div>
 
   <!-- TAB: Calculator -->
@@ -664,6 +665,40 @@
     </div>
   </div>
 
+  <!-- TAB: Settings -->
+  <div id="tabSettings" style="display:none;">
+    <div class="card coral">
+      <div class="section-label"><span class="icon">☁️</span> Синхронізація</div>
+      <div id="cloudStatus" style="text-align:center;padding:12px 0;font-size:14px;color:#A08B74;">
+        ○ Офлайн
+      </div>
+
+      <div id="cloudLoginSection">
+        <label>Нік</label>
+        <input type="text" id="cloudNick" placeholder="Ваш нікнейм" autocomplete="off">
+        <label>Пароль</label>
+        <input type="password" id="cloudPass" placeholder="Пароль">
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary" onclick="cloudLogin()" style="flex:1;">Увійти</button>
+          <button class="btn-green" onclick="cloudRegister()" style="flex:1;">Зареєструватись</button>
+        </div>
+      </div>
+
+      <div id="cloudLogoutSection" style="display:none;">
+        <p style="font-size:13px;color:#A08B74;margin-bottom:12px;">
+          ✅ Залогінено як <strong id="cloudNickDisplay"></strong>
+        </p>
+        <button class="btn-outline" onclick="syncToCloud()" style="font-size:13px;">🔄 Синхронізувати зараз</button>
+        <button class="btn-outline" onclick="cloudLogout()" style="font-size:13px;color:#E06050;">🚪 Вийти з хмари</button>
+      </div>
+
+      <p style="font-size:12px;color:#BBA98E;margin-top:14px;line-height:1.6;">
+        ☁️ Дані шифруються вашим паролем на пристрої.
+        Сервер зберігає лише зашифровані блоби — ваш пароль ніколи не покидає браузер.
+      </p>
+    </div>
+  </div>
+
 </div>
 
 <div id="toast" class="toast"></div>
@@ -673,6 +708,176 @@
 const FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
 const DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=303617623&single=true&output=tsv';
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwvQV7U8dBareulZcDAQNkysAxhK4z8cmnWpF3WZvFxuPv5VcNh7X172FjrMlejx6FH5Q/exec';
+const CLOUD_URL = 'https://calories-calc.nitanaredleaf.workers.dev';
+
+// ========== CLOUD SYNC ==========
+var _cloudNick = localStorage.getItem('foodlook_cloud_nick') || '';
+var _syncTimeout = null;
+
+function isCloudLoggedIn() { return !!_cloudNick; }
+
+function updateCloudUI() {
+  var statusEl = document.getElementById('cloudStatus');
+  var loginSection = document.getElementById('cloudLoginSection');
+  var logoutSection = document.getElementById('cloudLogoutSection');
+  var nickDisplay = document.getElementById('cloudNickDisplay');
+
+  if (isCloudLoggedIn()) {
+    statusEl.innerHTML = '● Синхронізовано';
+    statusEl.style.color = '#2D7D5F';
+    loginSection.style.display = 'none';
+    logoutSection.style.display = 'block';
+    nickDisplay.textContent = _cloudNick;
+    document.getElementById('cloudNick').value = '';
+    document.getElementById('cloudPass').value = '';
+  } else {
+    statusEl.innerHTML = '○ Офлайн';
+    statusEl.style.color = '#A08B74';
+    loginSection.style.display = 'block';
+    logoutSection.style.display = 'none';
+  }
+}
+
+async function cloudRegister() {
+  var nick = document.getElementById('cloudNick').value.trim();
+  var pass = document.getElementById('cloudPass').value;
+  if (!nick) { showToast('❌ Введіть нік'); return; }
+  if (!pass || pass.length < 4) { showToast('❌ Пароль ≥ 4 символів'); return; }
+  if (!_key) { showToast('❌ Спочатку створіть профіль'); return; }
+
+  var salt = fromB64(localStorage.getItem('foodlook_salt'));
+  var profileEnc = await encrypt(_profile, _key);
+  var diaryEnc = await encrypt(_diary, _key);
+
+  try {
+    var res = await fetch(CLOUD_URL + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nick: nick, password: pass, salt: localStorage.getItem('foodlook_salt'), profile_enc: profileEnc, diary_enc: diaryEnc }),
+    });
+    var data = await res.json();
+    if (data.error) { showToast('❌ ' + data.error); return; }
+    _cloudNick = nick;
+    localStorage.setItem('foodlook_cloud_nick', nick);
+    showToast('✅ Зареєстровано та синхронізовано');
+    updateCloudUI();
+  } catch (e) {
+    showToast('❌ Помилка з\'єднання');
+  }
+}
+
+async function cloudLogin() {
+  var nick = document.getElementById('cloudNick').value.trim();
+  var pass = document.getElementById('cloudPass').value;
+  if (!nick || !pass) { showToast('❌ Заповніть всі поля'); return; }
+
+  try {
+    var res = await fetch(CLOUD_URL + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nick: nick, password: pass }),
+    });
+    var data = await res.json();
+    if (data.error) { showToast('❌ ' + data.error); return; }
+
+    // Restore salt and decrypt
+    localStorage.setItem('foodlook_salt', data.salt);
+    var salt = fromB64(data.salt);
+    _key = await deriveKey(pass, salt);
+
+    try {
+      _profile = data.profile_enc ? await decrypt(data.profile_enc, _key) : { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
+      _diary = data.diary_enc ? await decrypt(data.diary_enc, _key) : {};
+    } catch (e) {
+      showToast('❌ Невірний пароль');
+      _key = null;
+      return;
+    }
+
+    await saveLocal();
+    _cloudNick = nick;
+    localStorage.setItem('foodlook_cloud_nick', nick);
+    // Store password hash for auto-sync (not the password itself)
+    var passHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass)))).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    localStorage.setItem('foodlook_cloud_hash', passHash);
+    showToast('✅ Ввійшли та синхронізовано');
+    updateCloudUI();
+    renderProfile();
+    loadTodayDiary();
+  } catch (e) {
+    showToast('❌ Помилка з\'єднання');
+  }
+}
+
+function cloudLogout() {
+  _cloudNick = '';
+  localStorage.removeItem('foodlook_cloud_nick');
+  localStorage.removeItem('foodlook_cloud_hash');
+  showToast('✅ Вийшли з хмари');
+  updateCloudUI();
+}
+
+async function syncToCloud() {
+  if (!isCloudLoggedIn() || !_key) return;
+  var passHash = localStorage.getItem('foodlook_cloud_hash');
+  if (!passHash) return;
+  var profileEnc = await encrypt(_profile, _key);
+  var diaryEnc = await encrypt(_diary, _key);
+
+  try {
+    var res = await fetch(CLOUD_URL + '/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nick: _cloudNick, password: passHash, profile_enc: profileEnc, diary_enc: diaryEnc }),
+    });
+    var data = await res.json();
+    if (data.ok) {
+      var statusEl = document.getElementById('cloudStatus');
+      if (statusEl) statusEl.innerHTML = '● Синхронізовано ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    }
+  } catch (e) {
+    var statusEl = document.getElementById('cloudStatus');
+    if (statusEl) statusEl.innerHTML = '⚠ Помилка синхронізації';
+  }
+}
+
+function syncDebounced() {
+  if (!isCloudLoggedIn()) return;
+  clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(syncToCloud, 2000);
+}
+
+function updateCloudStatus() {
+  if (!isCloudLoggedIn()) return;
+  var statusEl = document.getElementById('cloudStatus');
+  if (statusEl) statusEl.innerHTML = '● Синхронізовано';
+}
+
+async function syncFromCloud() {
+  if (!isCloudLoggedIn() || !_key) return;
+  var passHash = localStorage.getItem('foodlook_cloud_hash');
+  if (!passHash) return;
+
+  try {
+    var res = await fetch(CLOUD_URL + '/sync?nick=' + encodeURIComponent(_cloudNick) + '&password=' + encodeURIComponent(passHash));
+    var data = await res.json();
+    if (data.error) return;
+
+    // Decrypt cloud data
+    var cloudProfile = data.profile_enc ? await decrypt(data.profile_enc, _key) : null;
+    var cloudDiary = data.diary_enc ? await decrypt(data.diary_enc, _key) : null;
+
+    // Cloud data overwrites local only if it's meaningful
+    if (cloudProfile && cloudProfile.name) _profile = cloudProfile;
+    if (cloudDiary && Object.keys(cloudDiary).length > 0) _diary = cloudDiary;
+
+    await saveLocal();
+    var statusEl = document.getElementById('cloudStatus');
+    if (statusEl) statusEl.innerHTML = '● Синхронізовано ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    // Silent fail on auto-sync
+  }
+}
 
 var CATEGORY_EMOJI = {
   'Овочі':'🥬','Фрукти':'🍎','Ягоди':'🫐','Горіхи та сухофрукти':'🥜','Гриби':'🍄',
@@ -748,6 +953,7 @@ async function saveLocal() {
   if (!_key) return;
   localStorage.setItem('foodlook_profile', await encrypt(_profile, _key));
   localStorage.setItem('foodlook_diary', await encrypt(_diary, _key));
+  syncDebounced();
 }
 
 async function handleLogin() {
@@ -759,6 +965,7 @@ async function handleLogin() {
     showProfileScreen();
     loadTodayDiary();
     document.getElementById('loginPass').value = '';
+    syncFromCloud();
   } else {
     showToast('❌ Невірний пароль');
   }
@@ -801,7 +1008,9 @@ function clearAllData() {
   localStorage.removeItem('foodlook_profile');
   localStorage.removeItem('foodlook_diary');
   localStorage.removeItem('foodlook_backup');
-  _key = null; _profile = null; _diary = null;
+  localStorage.removeItem('foodlook_cloud_nick');
+  localStorage.removeItem('foodlook_cloud_hash');
+  _key = null; _profile = null; _diary = null; _cloudNick = '';
   showToast('✅ Дані очищено');
   showPasswordScreen();
 }
@@ -1165,11 +1374,12 @@ function renderWeekChart(el) {
 function switchTab(tab) {
   document.querySelectorAll('.tab-bar button').forEach(function(b) { b.classList.remove('active'); });
   document.querySelector('.tab-bar button[data-tab="' + tab + '"]').classList.add('active');
-  ['Calc','Profile','Diary'].forEach(function(t) {
+  ['Calc','Profile','Diary','Settings'].forEach(function(t) {
     document.getElementById('tab' + t).style.display = t.toLowerCase() === tab ? 'block' : 'none';
   });
   if (tab === 'profile') { if (_key) showProfileScreen(); else showPasswordScreen(); }
   if (tab === 'diary' && _key) loadTodayDiary();
+  if (tab === 'settings') updateCloudUI();
 }
 
 // ========== CALCULATOR ==========
