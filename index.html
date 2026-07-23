@@ -761,16 +761,25 @@ function cloudLogout() {
   _cloudNick = '';
   localStorage.removeItem('foodlook_cloud_nick');
   localStorage.removeItem('foodlook_cloud_hash');
+  sessionStorage.removeItem('foodlook_nick');
+  sessionStorage.removeItem('foodlook_pass');
   showToast('✅ Вийшли з хмари');
   updateCloudUI();
 }
 
 async function syncToCloud() {
-  if (!isCloudLoggedIn() || !_key) return;
+  if (!isCloudLoggedIn() || !_key) {
+    console.log('[sync] skipped: cloudNick=' + _cloudNick + ' key=' + !!_key);
+    return;
+  }
   var passHash = localStorage.getItem('foodlook_cloud_hash');
-  if (!passHash) return;
+  if (!passHash) {
+    console.log('[sync] skipped: no passHash');
+    return;
+  }
   var profileEnc = await encrypt(_profile, _key);
   var diaryEnc = await encrypt(_diary, _key);
+  console.log('[sync] sending:', { nick: _cloudNick, profileLen: profileEnc.length, diaryLen: diaryEnc.length });
 
   try {
     var res = await fetch(CLOUD_URL + '/sync', {
@@ -779,11 +788,15 @@ async function syncToCloud() {
       body: JSON.stringify({ nick: _cloudNick, password: passHash, profile_enc: profileEnc, diary_enc: diaryEnc }),
     });
     var data = await res.json();
+    console.log('[sync] response:', res.status, data);
     if (data.ok) {
       var statusEl = document.getElementById('cloudStatus');
       if (statusEl) statusEl.innerHTML = '● Синхронізовано ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      showToast('⚠️ Синхронізація: ' + (data.error || 'помилка'));
     }
   } catch (e) {
+    console.error('[sync] error:', e);
     var statusEl = document.getElementById('cloudStatus');
     if (statusEl) statusEl.innerHTML = '⚠ Помилка синхронізації';
   }
@@ -796,17 +809,27 @@ function syncDebounced() {
 }
 
 async function syncFromCloud() {
-  if (!isCloudLoggedIn() || !_key) return;
+  if (!isCloudLoggedIn() || !_key) {
+    console.log('[syncFrom] skipped: cloudNick=' + _cloudNick + ' key=' + !!_key);
+    return;
+  }
   var passHash = localStorage.getItem('foodlook_cloud_hash');
-  if (!passHash) return;
+  if (!passHash) {
+    console.log('[syncFrom] skipped: no passHash');
+    return;
+  }
 
   try {
-    var res = await fetch(CLOUD_URL + '/sync?nick=' + encodeURIComponent(_cloudNick) + '&password=' + encodeURIComponent(passHash));
+    var url = CLOUD_URL + '/sync?nick=' + encodeURIComponent(_cloudNick) + '&password=' + encodeURIComponent(passHash);
+    console.log('[syncFrom] fetching...');
+    var res = await fetch(url);
     var data = await res.json();
+    console.log('[syncFrom] response:', res.status, data);
     if (data.error) return;
 
     var cloudProfile = data.profile_enc ? await decrypt(data.profile_enc, _key) : null;
     var cloudDiary = data.diary_enc ? await decrypt(data.diary_enc, _key) : null;
+    console.log('[syncFrom] decrypted:', { profile: !!cloudProfile, diary: !!cloudDiary });
 
     if (cloudProfile && cloudProfile.name) _profile = cloudProfile;
     if (cloudDiary && Object.keys(cloudDiary).length > 0) _diary = cloudDiary;
@@ -814,13 +837,41 @@ async function syncFromCloud() {
     await saveLocal();
     var statusEl = document.getElementById('cloudStatus');
     if (statusEl) statusEl.innerHTML = '● Синхронізовано ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {}
+  } catch (e) {
+    console.error('[syncFrom] error:', e);
+  }
 }
 
 async function sha256str(str) {
   var data = new TextEncoder().encode(str);
   var hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+async function autoLogin() {
+  var nick = sessionStorage.getItem('foodlook_nick');
+  var pass = sessionStorage.getItem('foodlook_pass');
+  if (!nick || !pass) return;
+  if (!hasSalt()) return;
+
+  var salt = fromB64(localStorage.getItem('foodlook_salt'));
+  _key = await deriveKey(pass, salt);
+  try {
+    var pStr = localStorage.getItem('foodlook_profile');
+    _profile = pStr ? await decrypt(pStr, _key) : { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
+    var dStr = localStorage.getItem('foodlook_diary');
+    _diary = dStr ? await decrypt(dStr, _key) : {};
+  } catch (e) {
+    _key = null;
+    sessionStorage.removeItem('foodlook_nick');
+    sessionStorage.removeItem('foodlook_pass');
+    return;
+  }
+
+  _cloudNick = localStorage.getItem('foodlook_cloud_nick') || '';
+  showToast('✅ Автовхід: ' + nick);
+  showProfileScreen();
+  loadTodayDiary();
 }
 
 var CATEGORY_EMOJI = {
@@ -926,6 +977,8 @@ async function handleLogin() {
     localStorage.setItem('foodlook_cloud_nick', nick);
     var passHash = await sha256str(pass);
     localStorage.setItem('foodlook_cloud_hash', passHash);
+    sessionStorage.setItem('foodlook_nick', nick);
+    sessionStorage.setItem('foodlook_pass', pass);
     showToast('✅ Ввійшли та синхронізовано');
     showProfileScreen();
     loadTodayDiary();
@@ -935,6 +988,8 @@ async function handleLogin() {
     // Try local login
     var ok = await login(pass);
     if (ok) {
+      sessionStorage.setItem('foodlook_nick', nick);
+      sessionStorage.setItem('foodlook_pass', pass);
       showToast('✅ Увійшов (офлайн)');
       showProfileScreen();
       loadTodayDiary();
@@ -989,6 +1044,8 @@ function clearAllData() {
   localStorage.removeItem('foodlook_backup');
   localStorage.removeItem('foodlook_cloud_nick');
   localStorage.removeItem('foodlook_cloud_hash');
+  sessionStorage.removeItem('foodlook_nick');
+  sessionStorage.removeItem('foodlook_pass');
   _key = null; _profile = null; _diary = null; _cloudNick = '';
   showToast('✅ Дані очищено');
   showPasswordScreen();
@@ -1004,7 +1061,8 @@ async function handleCreatePass() {
   if (pass !== confirm) { showToast('❌ Паролі не співпадають'); return; }
   var ok = await login(pass);
   if (ok) {
-    // Register to cloud
+    sessionStorage.setItem('foodlook_nick', nick);
+    sessionStorage.setItem('foodlook_pass', pass);
     var cloudOk = await cloudRegister(nick, pass);
     if (cloudOk) {
       showToast('✅ Профіль створено та синхронізовано!');
@@ -1405,6 +1463,7 @@ Promise.all([foodP, dishP]).then(([foodText, dishText]) => {
   document.getElementById('content').style.display = 'block';
   if (items.length === 0) showToast('❌ База порожня', 4000);
   checkBackup();
+  autoLogin();
 }).catch(err => {
   document.getElementById('loadingMsg').innerHTML = '❌ Помилка: ' + err.message;
 });
