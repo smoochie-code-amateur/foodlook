@@ -7,6 +7,8 @@
   <link rel="icon" href="assets/flame.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/mobile.css">
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:wght@400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:wght@400;500;700&display=swap"></noscript>
 
 </head>
 <body>
@@ -91,6 +93,9 @@
       <button class="btn-primary" onclick="window.open(WEB_APP_URL, '_blank')">
         <img src="assets/add.svg" width="18" height="18" alt="" style="vertical-align:middle;margin-right:6px;">Додати продукт чи рецепт
       </button>
+      <button class="btn-outline" onclick="refreshDatabase().then(function(n){showToast('Оновлено: '+n+' записів')})" style="margin-top:8px;width:100%;">
+        <img src="assets/arrow-clockwise.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Оновити базу
+      </button>
 
       <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:12px;">
         База даних продуктів створена у Google Sheets.
@@ -98,48 +103,46 @@
     </div>
 
     <div id="tabProfile" class="tab-content">
-      <div id="createPassScreen" style="display:none;">
-        <div class="card">
-          <div class="section-label"><span class="icon red"><img src="assets/lock.svg" width="18" height="18" alt=""></span> Створення профілю</div>
-          <label>Нікнейм</label>
-          <input type="text" id="createNick" placeholder="Ваш нік" autocomplete="off">
-          <label>Придумайте пароль</label>
-          <input type="password" id="createPass" placeholder="Пароль">
-          <label>Повторіть пароль</label>
-          <input type="password" id="createPassConfirm" placeholder="Повторіть пароль">
-          <button class="btn-primary" onclick="handleCreatePass()">
-            <img src="assets/lock.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Створити профіль
-          </button>
-          <p style="font-size:13px;color:var(--text-muted);margin-top:12px;line-height:1.7;">
-            <img src="assets/warning.svg" width="14" height="14" alt="" style="vertical-align:middle;margin-right:4px;"> Дані зберігаються <strong>локально</strong> у вашому браузері та синхронізуються у хмару.
-            Пароль не зберігається — він використовується для шифрування.
-            Якщо забудете пароль, дані буде неможливо відновити.
-          </p>
-          <button class="btn-outline" onclick="showImport()" style="font-size:13px;">
-            <img src="assets/folder-open.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Відновити з бекапу
-          </button>
-          <button class="btn-outline" onclick="clearAllData()" style="font-size:13px;color:var(--danger);">
-            <img src="assets/trash-simple.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Очистити всі дані
-          </button>
+      <div id="authScreen">
+        <div style="display:flex;gap:0;border-bottom:3px solid var(--primary);margin-bottom:16px;">
+          <button class="auth-tab active" id="authTabLogin" onclick="switchAuthTab('login')" style="flex:1;padding:14px;font-family:var(--font-heading);font-size:17px;font-weight:700;border:none;background:var(--primary);color:#fff;cursor:pointer;">Увійти</button>
+          <button class="auth-tab" id="authTabCreate" onclick="switchAuthTab('create')" style="flex:1;padding:14px;font-family:var(--font-heading);font-size:17px;font-weight:700;border:none;background:transparent;color:var(--text);cursor:pointer;">Створити</button>
         </div>
-      </div>
-
-      <div id="loginScreen" style="display:none;">
-        <div class="card">
-          <div class="section-label"><span class="icon red"><img src="assets/lock.svg" width="18" height="18" alt=""></span> Вхід в профіль</div>
-          <label>Нікнейм</label>
-          <input type="text" id="loginNick" placeholder="Ваш нік" autocomplete="off">
-          <label>Ваш пароль</label>
-          <input type="password" id="loginPass" placeholder="Пароль">
-          <button class="btn-primary" onclick="handleLogin()">
-            <img src="assets/sign-out.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Увійти
-          </button>
-          <p style="font-size:13px;color:var(--text-muted);margin-top:12px;">
-            <img src="assets/warning.svg" width="14" height="14" alt="" style="vertical-align:middle;margin-right:4px;"> Дані синхронізуються між пристроями. Забули пароль? Натисніть "Очистити".
-          </p>
-          <button class="btn-outline" onclick="clearAllData()" style="font-size:13px;color:var(--danger);">
-            <img src="assets/trash-simple.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Очистити всі дані
-          </button>
+        <div id="authLoginForm">
+          <div class="card">
+            <div class="section-label"><span class="icon red"><img src="assets/sign-out.svg" width="18" height="18" alt=""></span> Увійти в профіль</div>
+            <label>Нікнейм</label>
+            <input type="text" id="loginNick" placeholder="Ваш нік" autocomplete="off">
+            <label>Пароль</label>
+            <input type="password" id="loginPass" placeholder="Пароль">
+            <button class="btn-primary" onclick="handleLogin()">
+              <img src="assets/sign-out.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Увійти
+            </button>
+          </div>
+        </div>
+        <div id="authCreateForm" style="display:none;">
+          <div class="card">
+            <div class="section-label"><span class="icon red"><img src="assets/lock.svg" width="18" height="18" alt=""></span> Створити новий профіль</div>
+            <label>Нікнейм</label>
+            <input type="text" id="createNick" placeholder="Ваш нік" autocomplete="off">
+            <label>Пароль</label>
+            <input type="password" id="createPass" placeholder="Придумайте пароль">
+            <label>Повторіть пароль</label>
+            <input type="password" id="createPassConfirm" placeholder="Повторіть пароль">
+            <button class="btn-primary" onclick="handleCreatePass()">
+              <img src="assets/lock.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Створити профіль
+            </button>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:12px;line-height:1.7;">
+              <img src="assets/warning.svg" width="14" height="14" alt="" style="vertical-align:middle;margin-right:4px;"> Дані зберігаються <strong>локально</strong> та синхронізуються у хмару.
+              Пароль не зберігається — він використовується для шифрування.
+            </p>
+            <button class="btn-outline" onclick="showImport()" style="font-size:13px;">
+              <img src="assets/folder-open.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Відновити з бекапу
+            </button>
+            <button class="btn-outline" onclick="clearAllData()" style="font-size:13px;color:var(--danger);">
+              <img src="assets/trash-simple.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:6px;">Очистити всі дані
+            </button>
+          </div>
         </div>
       </div>
 
@@ -149,7 +152,7 @@
           <div class="flex-row" style="justify-content:center;margin-bottom:16px;">
             <button class="btn-outline btn-icon-sm" onclick="pickPhoto()" title="Фото"><img src="assets/camera.svg" width="18" height="18" alt=""></button>
             <button class="btn-outline btn-icon-sm" onclick="setPhotoUrl()" title="URL"><img src="assets/link.svg" width="18" height="18" alt=""></button>
-            <button class="btn-outline btn-icon-sm" onclick="removePhoto()" title="Видалити фото" style="color:var(--danger);"><img src="assets/trash-simple.svg" width="18" height="18" alt=""></button>
+            <button class="btn-outline btn-icon-sm" onclick="removePhoto()" title="Видалити фото" style="color:var(--danger);--icon-color:var(--danger);"><img src="assets/trash-simple.svg" width="18" height="18" alt=""></button>
           </div>
           <input type="file" id="photoFileInput" accept="image/*" style="display:none;">
           <div class="profile-stats">
@@ -169,14 +172,24 @@
             </div>
             <div><label>Вага (кг)</label><input type="number" id="editWeight" step="0.1"></div>
             <div><label>Зріст (см)</label><input type="number" id="editHeight" step="1"></div>
+            <div><label>Активність</label>
+              <select id="editActivity">
+                <option value="sedentary">Малорухливий</option>
+                <option value="light">Легкі вправи 1-3/тиждень</option>
+                <option value="moderate" selected>Вправи 3-5/тиждень</option>
+                <option value="active">Важкі вправи 6-7/тиждень</option>
+              </select>
+            </div>
             <div><label>Норма ккал</label><input type="number" id="editNorm" step="1"></div>
             <div class="full">
               <label>Розрахунок норми</label>
               <div class="calc-row">
-                <button class="btn-outline" onclick="calcBMR()" style="font-size:13px;padding:12px;">
-                  <img src="assets/calculator-fill.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:4px;">Розрахувати BMR
+                <button class="btn-outline" onclick="calcNorm()" style="font-size:13px;padding:12px;">
+                  <img src="assets/calculator-fill.svg" width="16" height="16" alt="" style="vertical-align:middle;margin-right:4px;">Розрахувати норму
                 </button>
                 <select id="editDeficit">
+                  <option value="-30">-30% (максимальний дефіцит)</option>
+                  <option value="-25">-25%</option>
                   <option value="-20">-20% (сильний дефіцит)</option>
                   <option value="-15">-15%</option>
                   <option value="-10">-10% (помірний дефіцит)</option>
@@ -188,7 +201,7 @@
                   <option value="20">+20% (сильний набір)</option>
                 </select>
               </div>
-              <div id="bmrResult" style="font-size:13px;color:var(--text-muted);margin-top:8px;"></div>
+              <div id="calcResult" style="font-size:13px;color:var(--text-muted);margin-top:8px;"></div>
             </div>
           </div>
           <button class="btn-primary" onclick="saveProfile()">
@@ -197,7 +210,7 @@
           <div class="btn-icon-row">
             <button class="btn-outline btn-icon-sm" onclick="showExport()" title="Експорт даних"><img src="assets/download-simple.svg" width="18" height="18" alt=""></button>
             <button class="btn-outline btn-icon-sm" onclick="showImport()" title="Імпорт даних"><img src="assets/folder-open.svg" width="18" height="18" alt=""></button>
-            <button class="btn-outline btn-icon-sm" onclick="clearAllData()" title="Вийти та очистити дані" style="color:var(--danger);"><img src="assets/trash-simple.svg" width="18" height="18" alt=""></button>
+            <button class="btn-outline btn-icon-sm" onclick="clearAllData()" title="Вийти та очистити дані" style="color:var(--danger);--icon-color:var(--danger);"><img src="assets/trash-simple.svg" width="18" height="18" alt=""></button>
           </div>
         </div>
 
@@ -210,13 +223,25 @@
             <div class="btn-icon-row">
               <button class="btn-outline btn-icon-sm" onclick="syncToCloud()" title="Завантажити в хмару"><img src="assets/cloud-arrow-up.svg" width="18" height="18" alt=""></button>
               <button class="btn-outline btn-icon-sm" onclick="syncFromCloud()" title="Оновити з хмари"><img src="assets/arrow-clockwise.svg" width="18" height="18" alt=""></button>
-              <button class="btn-outline btn-icon-sm" onclick="cloudLogout()" title="Вийти з хмари" style="color:var(--danger);"><img src="assets/sign-out.svg" width="18" height="18" alt=""></button>
+              <button class="btn-outline btn-icon-sm" onclick="cloudLogout()" title="Вийти з хмари" style="color:var(--danger);--icon-color:var(--danger);"><img src="assets/sign-out.svg" width="18" height="18" alt=""></button>
             </div>
           </div>
           <p style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.6;">
             <img src="assets/cloud-arrow-up.svg" width="14" height="14" alt="" style="vertical-align:middle;margin-right:4px;"> Дані шифруються вашим паролем на пристрої.
             Сервер зберігає лише зашифровані блоби — ваш пароль ніколи не покидає браузер.
           </p>
+        </div>
+
+        <div class="card">
+          <div class="section-label"><span class="icon red"><img src="assets/settings.svg" width="18" height="18" alt=""></span> Тема оформлення</div>
+          <div class="theme-picker">
+            <div class="theme-dot theme-dot-sand active" onclick="setTheme('')" title="Пісочний"></div>
+            <div class="theme-dot theme-dot-green" onclick="setTheme('green')" title="Зелений"></div>
+            <div class="theme-dot theme-dot-yellow" onclick="setTheme('yellow')" title="Жовтий"></div>
+            <div class="theme-dot theme-dot-pink" onclick="setTheme('pink')" title="Рожевий"></div>
+            <div class="theme-dot theme-dot-blue" onclick="setTheme('blue')" title="Блакитний"></div>
+            <div class="theme-dot theme-dot-purple" onclick="setTheme('purple')" title="Фіолетовий"></div>
+          </div>
         </div>
 
         <div class="footer-links">
