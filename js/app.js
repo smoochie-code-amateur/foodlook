@@ -1,10 +1,8 @@
-// ========== CONFIG ==========
 var FOOD_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=0&single=true&output=tsv';
 var DISH_TSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQp-Ak-Q3KuiANDXbA0QsC_AVdIdmidoorrQEzOUBORjDJvVfWSn1pB2qhCKNYjPeA8yTFpiHY6hGa-/pub?gid=303617623&single=true&output=tsv';
 var CLOUD_URL = 'https://calories-calc.nitanaredleaf.workers.dev';
 var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwvQV7U8dBareulZcDAQNkysAxhK4z8cmnWpF3WZvFxuPv5VcNh7X172FjrMlejx6FH5Q/exec';
 
-// ========== CRYPTO ==========
 async function deriveKey(password, salt) {
   var keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
@@ -37,7 +35,6 @@ async function sha256str(str) {
   return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
 
-// ========== AUTH STATE ==========
 var _key = null;
 var _profile = null;
 var _diary = null;
@@ -75,10 +72,8 @@ async function saveLocal() {
 }
 
 function showProfileScreen() {
-  if (!_profile) _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, photo: '', photoUrl: '' };
-  var el = document.getElementById('createPassScreen');
-  if (el) el.style.display = 'none';
-  el = document.getElementById('loginScreen');
+  if (!_profile) _profile = { name: '', age: 0, gender: 'male', weight: 0, height: 0, kcalNorm: 0, deficit: 0, activity: 'moderate', photo: '', photoUrl: '' };
+  var el = document.getElementById('authScreen');
   if (el) el.style.display = 'none';
   el = document.getElementById('profileScreen');
   if (el) el.style.display = 'block';
@@ -88,27 +83,33 @@ function showProfileScreen() {
 function showPasswordScreen() {
   var el = document.getElementById('profileScreen');
   if (el) el.style.display = 'none';
-  if (hasSalt()) {
-    el = document.getElementById('createPassScreen');
-    if (el) el.style.display = 'none';
-    el = document.getElementById('loginScreen');
-    if (el) {
-      el.style.display = 'block';
-      document.getElementById('loginPass').value = '';
-      document.getElementById('loginNick').value = _cloudNick || '';
-      document.getElementById('loginNick').focus();
-    }
+  el = document.getElementById('authScreen');
+  if (el) {
+    el.style.display = 'block';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginNick').value = _cloudNick || '';
+    document.getElementById('loginNick').focus();
+    switchAuthTab('login');
+  }
+}
+
+function switchAuthTab(tab) {
+  var loginBtn = document.getElementById('authTabLogin');
+  var createBtn = document.getElementById('authTabCreate');
+  var loginForm = document.getElementById('authLoginForm');
+  var createForm = document.getElementById('authCreateForm');
+  if (tab === 'login') {
+    loginBtn.style.background = 'var(--primary)'; loginBtn.style.color = '#fff';
+    createBtn.style.background = 'transparent'; createBtn.style.color = 'var(--text)';
+    loginBtn.classList.add('active'); createBtn.classList.remove('active');
+    loginForm.style.display = 'block';
+    createForm.style.display = 'none';
   } else {
-    el = document.getElementById('loginScreen');
-    if (el) el.style.display = 'none';
-    el = document.getElementById('createPassScreen');
-    if (el) {
-      el.style.display = 'block';
-      document.getElementById('createPass').value = '';
-      document.getElementById('createPassConfirm').value = '';
-      document.getElementById('createNick').value = '';
-      document.getElementById('createNick').focus();
-    }
+    createBtn.style.background = 'var(--primary)'; createBtn.style.color = '#fff';
+    loginBtn.style.background = 'transparent'; loginBtn.style.color = 'var(--text)';
+    createBtn.classList.add('active'); loginBtn.classList.remove('active');
+    createForm.style.display = 'block';
+    loginForm.style.display = 'none';
   }
 }
 
@@ -245,7 +246,6 @@ async function autoLogin() {
   syncFromCloud();
 }
 
-// ========== CLOUD SYNC ==========
 function isCloudLoggedIn() { return !!_cloudNick; }
 
 function updateCloudUI() {
@@ -388,28 +388,36 @@ async function syncFromCloud() {
   }
 }
 
-// ========== PROFILE ==========
+var ACTIVITY_LEVELS = {
+  sedentary: { mult: 1.2, label: 'Малорухливий' },
+  light: { mult: 1.375, label: 'Легкі вправи 1-3/тиждень' },
+  moderate: { mult: 1.55, label: 'Вправи 3-5/тиждень' },
+  active: { mult: 1.725, label: 'Важкі вправи 6-7/тиждень' }
+};
+
 function renderProfile() {
   if (!_profile) return;
   var el;
   el = document.getElementById('pWeight'); if (el) el.textContent = _profile.weight || '—';
   el = document.getElementById('pHeight'); if (el) el.textContent = _profile.height || '—';
   el = document.getElementById('pAge'); if (el) el.textContent = _profile.age || '—';
-  el = document.getElementById('pNorm'); if (el) el.textContent = _profile.kcalNorm || '—';
+  var needs = calcDailyNeeds();
+  el = document.getElementById('pNorm'); if (el) el.textContent = needs ? needs.kcalTarget : '—';
   el = document.getElementById('editName'); if (el) el.value = _profile.name || '';
   el = document.getElementById('editAge'); if (el) el.value = _profile.age || '';
   el = document.getElementById('editGender'); if (el) el.value = _profile.gender || 'male';
   el = document.getElementById('editWeight'); if (el) el.value = _profile.weight || '';
   el = document.getElementById('editHeight'); if (el) el.value = _profile.height || '';
-  el = document.getElementById('editNorm'); if (el) el.value = _profile.kcalNorm || '';
+  el = document.getElementById('editNorm'); if (el) el.value = needs ? needs.kcalTarget : '';
   el = document.getElementById('editDeficit'); if (el) el.value = _profile.deficit || 0;
+  el = document.getElementById('editActivity'); if (el) el.value = _profile.activity || 'moderate';
   var photo = document.getElementById('profilePhoto');
   if (photo) {
     if (_profile.photo) { photo.src = _profile.photo; }
     else if (_profile.photoUrl) { photo.src = _profile.photoUrl; }
     else { photo.src = ''; }
   }
-  el = document.getElementById('bmrResult'); if (el) el.textContent = '';
+  el = document.getElementById('calcResult'); if (el) el.textContent = '';
 }
 
 function pickPhoto() { document.getElementById('photoFileInput').click(); }
@@ -455,33 +463,41 @@ async function saveProfile() {
   _profile.gender = document.getElementById('editGender').value || 'male';
   _profile.weight = parseFloat(document.getElementById('editWeight').value) || 0;
   _profile.height = parseFloat(document.getElementById('editHeight').value) || 0;
-  _profile.kcalNorm = parseFloat(document.getElementById('editNorm').value) || 0;
+  _profile.activity = document.getElementById('editActivity').value || 'moderate';
   _profile.deficit = parseInt(document.getElementById('editDeficit').value) || 0;
+  var needs = calcDailyNeeds();
+  _profile.kcalNorm = needs ? needs.kcalTarget : 0;
   await saveLocal();
   showToast('Профіль збережено');
   renderProfile();
 }
 
-function calcBMR() {
+function calcNorm() {
   var weight = parseFloat(document.getElementById('editWeight').value) || 0;
   var height = parseFloat(document.getElementById('editHeight').value) || 0;
   var age = parseFloat(document.getElementById('editAge').value) || 0;
   var gender = document.getElementById('editGender').value;
+  var activityKey = document.getElementById('editActivity').value || 'moderate';
+  var deficit = parseInt(document.getElementById('editDeficit').value) || 0;
+  if (deficit < -30) { deficit = -30; document.getElementById('editDeficit').value = -30; }
   if (!weight || !height || !age) {
-    document.getElementById('bmrResult').textContent = 'Заповніть вагу, зріст та вік';
+    document.getElementById('calcResult').textContent = 'Заповніть вагу, зріст та вік';
     return;
   }
   var bmr = gender === 'male'
     ? 10 * weight + 6.25 * height - 5 * age + 5
     : 10 * weight + 6.25 * height - 5 * age - 161;
-  var deficit = parseInt(document.getElementById('editDeficit').value) || 0;
-  var adjusted = Math.round(bmr * (1 + deficit / 100));
-  document.getElementById('bmrResult').innerHTML = 'BMR: <strong>' + Math.round(bmr) + '</strong> ккал' +
-    (deficit !== 0 ? ' → ' + (deficit > 0 ? '+' : '') + deficit + '%: <strong>' + adjusted + '</strong> ккал' : '');
-  document.getElementById('editNorm').value = adjusted;
+  var activityMult = ACTIVITY_LEVELS[activityKey] ? ACTIVITY_LEVELS[activityKey].mult : 1.55;
+  var tdee = Math.round(bmr * activityMult);
+  var target = Math.round(tdee * (1 + deficit / 100));
+  var deficitLabel = deficit === 0 ? 'підтримка' : (deficit > 0 ? '+' + deficit + '% набір' : deficit + '% дефіцит');
+  document.getElementById('calcResult').innerHTML =
+    'BMR: <strong>' + Math.round(bmr) + '</strong> → ' +
+    'TDEE: <strong>' + tdee + '</strong> → ' +
+    'Норма (' + deficitLabel + '): <strong>' + target + '</strong> ккал';
+  document.getElementById('editNorm').value = target;
 }
 
-// ========== DASHBOARD ==========
 function calcDailyNeeds() {
   if (!_profile || !_profile.weight || !_profile.height || !_profile.age) return null;
 
@@ -489,17 +505,19 @@ function calcDailyNeeds() {
   var height = _profile.height;
   var age = _profile.age;
   var gender = _profile.gender || 'male';
+  var activityKey = _profile.activity || 'moderate';
 
   var bmr = gender === 'male'
     ? 10 * weight + 6.25 * height - 5 * age + 5
     : 10 * weight + 6.25 * height - 5 * age - 161;
 
-  var tdee = Math.round(bmr * 1.4);
+  var activityMult = ACTIVITY_LEVELS[activityKey] ? ACTIVITY_LEVELS[activityKey].mult : 1.55;
+  var tdee = Math.round(bmr * activityMult);
   var deficit = _profile.deficit || 0;
   var kcalTarget = Math.round(tdee * (1 + deficit / 100));
 
   var protPerKg = gender === 'male' ? 1.8 : 1.6;
-  var fatPerKg = 0.9;
+  var fatPerKg = 0.8;
   var protTarget = Math.round(weight * protPerKg);
   var fatTarget = Math.round(weight * fatPerKg);
 
@@ -516,7 +534,9 @@ function calcDailyNeeds() {
     fatTarget: fatTarget,
     carbsTarget: carbsTarget,
     protPerKg: protPerKg,
-    fatPerKg: fatPerKg
+    fatPerKg: fatPerKg,
+    activityKey: activityKey,
+    activityLabel: ACTIVITY_LEVELS[activityKey] ? ACTIVITY_LEVELS[activityKey].label : ''
   };
 }
 
@@ -615,9 +635,11 @@ function renderDashboard() {
 
   html += '<div class="dash-summary">';
   html += '<div class="dash-stat"><span class="num">' + Math.round(tKkal) + '</span><span class="lbl">Калорії сьогодні</span></div>';
-  html += '<div class="dash-stat"><span class="num">' + needs.kcalTarget + '</span><span class="lbl">Норма</span></div>';
+  html += '<div class="dash-stat"><span class="num">' + needs.kcalTarget + '</span><span class="lbl">Денна норма</span></div>';
   html += '<div class="dash-stat"><span class="num">' + (_profile.weight || '—') + ' кг</span><span class="lbl">Поточна вага</span></div>';
-  html += '<div class="dash-stat"><span class="num">' + needs.bmr + '</span><span class="lbl">BMR</span></div>';
+  var deficit = _profile.deficit || 0;
+  var goalLabel = deficit === 0 ? 'Підтримка' : (deficit > 0 ? 'Набір +' + deficit + '%' : 'Дефіцит ' + deficit + '%');
+  html += '<div class="dash-stat"><span class="num">' + goalLabel + '</span><span class="lbl">Ціль</span></div>';
   html += '</div>';
 
   html += '<div class="progress-wrap">';
@@ -650,7 +672,6 @@ function renderDashboard() {
   el.innerHTML = html;
 }
 
-// ========== EXPORT / IMPORT ==========
 function showExport() {
   var pass = prompt('Введіть ваш пароль профілю для шифрування бекапу:');
   if (!pass) return;
@@ -718,7 +739,6 @@ async function doImport(jsonStr, pass) {
   }
 }
 
-// ========== DIARY ==========
 function loadTodayDiary() {
   if (!_key) return;
   var today = new Date().toISOString().slice(0, 10);
@@ -793,7 +813,6 @@ async function deleteDiaryItem(idx) {
   renderDiary(date);
 }
 
-// ========== INFOGRAPHICS ==========
 function renderInfographics(items) {
   var card = document.getElementById('infocard');
   if (!card) return;
@@ -869,7 +888,6 @@ function renderWeekChart(el) {
   });
 }
 
-// ========== CALCULATOR ==========
 var html5QrCode = null, scannerRunning = false, items = [], currentItem = null;
 
 function initCalculator() {
@@ -990,7 +1008,6 @@ function initCalculator() {
   function onScanSuccess(decodedText) { stopScanner(); barcodeInput.value = decodedText; lookupBarcode(decodedText); }
 }
 
-// ========== DIARY SEARCH ==========
 function initDiarySearch() {
   var diarySearch = document.getElementById('diarySearch');
   var diarySuggest = document.getElementById('diarySuggest');
@@ -1033,7 +1050,6 @@ function initDiarySearch() {
   }
 }
 
-// ========== TABS ==========
 function switchTab(tab) {
   document.querySelectorAll('.tab-bar button, .sidebar-nav a[data-tab], .header-nav a[data-tab]').forEach(function(b) { b.classList.remove('active'); });
   var selector1 = '.tab-bar button[data-tab="' + tab + '"]';
@@ -1051,7 +1067,6 @@ function switchTab(tab) {
   if (tab === 'dashboard') renderDashboard();
 }
 
-// ========== UTILITIES ==========
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function showToast(msg, d) {
@@ -1079,37 +1094,52 @@ function catEmoji(c) {
   return CATEGORY_EMOJI[c] || '';
 }
 
-// ========== INIT ==========
+function parseFoodTSV(text) {
+  var result = [];
+  if (!text) return result;
+  var lines = text.trim().split('\n');
+  for (var i = 1; i < lines.length; i++) {
+    var cols = lines[i].split('\t');
+    if (cols[0] && cols[0].trim()) {
+      result.push({ type: 'product', name: cols[0].trim(),
+        kkal: parseFloat(cols[1]) || 0, prot: parseFloat(cols[2]) || 0,
+        fat: parseFloat(cols[3]) || 0, carbs: parseFloat(cols[4]) || 0,
+        code: cols[5] ? cols[5].trim() : '', category: cols[6] ? cols[6].trim() : '' });
+    }
+  }
+  return result;
+}
+
+function parseDishTSV(text) {
+  var result = [];
+  if (!text) return result;
+  var lines = text.trim().split('\n');
+  for (var i = 1; i < lines.length; i++) {
+    var cols = lines[i].split('\t');
+    if (cols[0] && cols[1] && cols[1].trim()) {
+      result.push({ type: 'dish', name: cols[1].trim(),
+        kkal: parseFloat(cols[2]) || 0, prot: parseFloat(cols[3]) || 0,
+        fat: parseFloat(cols[4]) || 0, carbs: parseFloat(cols[5]) || 0, ingredients: cols[6] || '' });
+    }
+  }
+  return result;
+}
+
+function refreshDatabase() {
+  return Promise.all([
+    fetch(FOOD_TSV).then(function(r) { return r.text(); }).catch(function() { return '' }),
+    DISH_TSV ? fetch(DISH_TSV).then(function(r) { return r.text(); }).catch(function() { return '' }) : Promise.resolve('')
+  ]).then(function(results) {
+    items = parseFoodTSV(results[0]).concat(parseDishTSV(results[1]));
+    return items.length;
+  });
+}
+
 var foodP = fetch(FOOD_TSV).then(function(r) { return r.text(); }).catch(function() { return ''; });
 var dishP = DISH_TSV ? fetch(DISH_TSV).then(function(r) { return r.text(); }).catch(function() { return ''; }) : Promise.resolve('');
 
 Promise.all([foodP, dishP]).then(function(results) {
-  var foodText = results[0];
-  var dishText = results[1];
-  items = [];
-  if (foodText) {
-    var lines = foodText.trim().split('\n');
-    for (var i = 1; i < lines.length; i++) {
-      var cols = lines[i].split('\t');
-      if (cols[0] && cols[0].trim()) {
-        items.push({ type: 'product', name: cols[0].trim(),
-          kkal: parseFloat(cols[1]) || 0, prot: parseFloat(cols[2]) || 0,
-          fat: parseFloat(cols[3]) || 0, carbs: parseFloat(cols[4]) || 0,
-          code: cols[5] ? cols[5].trim() : '', category: cols[6] ? cols[6].trim() : '' });
-      }
-    }
-  }
-  if (dishText) {
-    var lines = dishText.trim().split('\n');
-    for (var i = 1; i < lines.length; i++) {
-      var cols = lines[i].split('\t');
-      if (cols[0] && cols[1] && cols[1].trim()) {
-        items.push({ type: 'dish', name: cols[1].trim(),
-          kkal: parseFloat(cols[2]) || 0, prot: parseFloat(cols[3]) || 0,
-          fat: parseFloat(cols[4]) || 0, carbs: parseFloat(cols[5]) || 0, ingredients: cols[6] || '' });
-      }
-    }
-  }
+  items = parseFoodTSV(results[0]).concat(parseDishTSV(results[1]));
   var loadingEl = document.getElementById('loadingMsg');
   if (loadingEl) loadingEl.style.display = 'none';
   var contentEl = document.getElementById('content');
@@ -1120,12 +1150,19 @@ Promise.all([foodP, dishP]).then(function(results) {
   initCalculator();
   initDiarySearch();
   initEventListeners();
+
+  setInterval(refreshDatabase, 30 * 60 * 1000);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) refreshDatabase();
+  });
+  window.addEventListener('message', function(e) {
+    if (e.data === 'refreshDB') refreshDatabase();
+  });
 }).catch(function(err) {
   var loadingEl = document.getElementById('loadingMsg');
   if (loadingEl) loadingEl.innerHTML = 'Помилка: ' + err.message;
 });
 
-// ========== EVENT LISTENERS ==========
 function initEventListeners() {
   var el;
   el = document.getElementById('loginPass'); if (el) el.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
@@ -1149,3 +1186,48 @@ function initEventListeners() {
     });
   }
 }
+
+(function inlineSvgIcons() {
+  document.querySelectorAll('img[src*="assets/"]').forEach(function(img) {
+    var src = img.getAttribute('src');
+    if (!src || !src.endsWith('.svg') || src.indexOf('logo.svg') !== -1 || img.classList.contains('header-logo') || img.closest('.header-logo-wrap') || img.closest('.app-header')) return;
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', src, false);
+      xhr.send();
+      if (xhr.status === 200) {
+        var doc = new DOMParser().parseFromString(xhr.responseText, 'image/svg+xml');
+        var svg = doc.querySelector('svg');
+        if (svg) {
+          ['width', 'height', 'class', 'style', 'title', 'onclick'].forEach(function(a) {
+            var v = img.getAttribute(a);
+            if (v !== null) svg.setAttribute(a, v);
+          });
+          img.parentNode.replaceChild(svg, img);
+        }
+      }
+    } catch(e) {}
+  });
+})();
+
+var THEME_NAMES = ['', 'green', 'yellow', 'pink', 'blue', 'purple'];
+
+function setTheme(name) {
+  THEME_NAMES.forEach(function(t) {
+    var cls = t ? 'theme-' + t : '';
+    if (cls) document.documentElement.classList.remove(cls);
+  });
+  if (name) document.documentElement.classList.add('theme-' + name);
+  localStorage.setItem('foodlook_theme', name);
+  document.querySelectorAll('.theme-dot').forEach(function(dot) { dot.classList.remove('active'); });
+  var activeClass = name ? 'theme-dot-' + name : 'theme-dot-sand';
+  var activeDot = document.querySelector('.' + activeClass);
+  if (activeDot) activeDot.classList.add('active');
+}
+
+function applyTheme() {
+  var saved = localStorage.getItem('foodlook_theme') || '';
+  setTheme(saved);
+}
+
+applyTheme();
