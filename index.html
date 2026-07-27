@@ -317,6 +317,12 @@
           <div class="section-label"><span class="icon orange"><img src="assets/add.svg" width="18" height="18" alt=""></span> Додати продукт</div>
           <label>Пошук</label>
           <input type="text" id="diarySearch" placeholder="Назва продукту...">
+          <label>Штрихкод</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="diaryBarcode" placeholder="Введи або відскануй..." style="flex:1;">
+            <button class="btn-outline btn-icon" onclick="toggleDiaryScanner()"><img src="assets/camera.svg" width="20" height="20" alt=""></button>
+          </div>
+          <div id="diaryScanner" style="display:none;"></div>
           <label>Вага (г)</label>
           <input type="number" id="diaryWeight" placeholder="0" inputmode="decimal">
           <div id="diarySuggest" style="max-height:140px;overflow-y:auto;"></div>
