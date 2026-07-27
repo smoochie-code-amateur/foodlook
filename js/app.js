@@ -1012,6 +1012,7 @@ function initDiarySearch() {
   var diarySearch = document.getElementById('diarySearch');
   var diarySuggest = document.getElementById('diarySuggest');
   var diaryWeight = document.getElementById('diaryWeight');
+  var diaryBarcode = document.getElementById('diaryBarcode');
   var addDiaryBtn = document.getElementById('addDiaryBtn');
   var diaryDate = document.getElementById('diaryDate');
 
@@ -1022,6 +1023,7 @@ function initDiarySearch() {
     diarySuggest.innerHTML = '';
     _diarySelected = null;
     addDiaryBtn.disabled = true;
+    if (diaryBarcode) diaryBarcode.value = '';
     if (!q) return;
     var filtered = items.filter(function(p) { return p.name.toLowerCase().includes(q); }).slice(0, 10);
     filtered.forEach(function(p) {
@@ -1031,11 +1033,45 @@ function initDiarySearch() {
         diarySearch.value = p.name;
         diarySuggest.innerHTML = '';
         _diarySelected = p;
+        if (diaryBarcode) diaryBarcode.value = p.code || '';
         addDiaryBtn.disabled = !diaryWeight.value;
       };
       diarySuggest.appendChild(d);
     });
   });
+
+  if (diaryBarcode) {
+    diaryBarcode.addEventListener('input', function() {
+      var code = diaryBarcode.value.trim();
+      diarySuggest.innerHTML = '';
+      _diarySelected = null;
+      addDiaryBtn.disabled = true;
+      diarySearch.value = '';
+      if (!code) return;
+      var p = items.find(function(x) { return x.code === code; });
+      if (p) {
+        diarySearch.value = p.name;
+        _diarySelected = p;
+        addDiaryBtn.disabled = !diaryWeight.value;
+        showToast(p.name, 2000);
+      }
+    });
+    diaryBarcode.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var code = diaryBarcode.value.trim();
+        if (!code) return;
+        var p = items.find(function(x) { return x.code === code; });
+        if (p) {
+          diarySearch.value = p.name;
+          diarySuggest.innerHTML = '';
+          _diarySelected = p;
+          addDiaryBtn.disabled = !diaryWeight.value;
+          showToast(p.name, 2000);
+        }
+      }
+    });
+  }
 
   diaryWeight.addEventListener('input', function() {
     addDiaryBtn.disabled = !this.value || !_diarySelected;
@@ -1047,6 +1083,44 @@ function initDiarySearch() {
 
   if (diaryDate) {
     diaryDate.addEventListener('change', function() { if (this.value) renderDiary(this.value); });
+  }
+}
+
+var diaryHtml5QrCode = null, diaryScannerRunning = false;
+
+window.toggleDiaryScanner = function() {
+  if (diaryScannerRunning) { stopDiaryScanner(); return; }
+  if (!window.Html5Qrcode) {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = function() { startDiaryScanner(); };
+    s.onerror = function() { showToast('Не вдалося завантажити сканер'); };
+    document.head.appendChild(s);
+  } else {
+    startDiaryScanner();
+  }
+};
+
+function startDiaryScanner() {
+  var el = document.getElementById('diaryScanner');
+  if (!el) return;
+  el.style.display = 'block';
+  if (!diaryHtml5QrCode) diaryHtml5QrCode = new Html5Qrcode("diaryScanner");
+  diaryHtml5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, onDiaryScanSuccess)
+    .then(function() { diaryScannerRunning = true; }).catch(function(err) { showToast('Камера: ' + err); });
+}
+
+function stopDiaryScanner() {
+  var el = document.getElementById('diaryScanner');
+  if (diaryHtml5QrCode) diaryHtml5QrCode.stop().then(function() { diaryScannerRunning = false; if (el) el.style.display = 'none'; });
+}
+
+function onDiaryScanSuccess(decodedText) {
+  stopDiaryScanner();
+  var barcodeInput = document.getElementById('diaryBarcode');
+  if (barcodeInput) {
+    barcodeInput.value = decodedText;
+    barcodeInput.dispatchEvent(new Event('input'));
   }
 }
 
@@ -1083,6 +1157,7 @@ var CATEGORY_EMOJI = {
   'Хліб та випічка': '🍞', 'Кондитерські вироби': '🍪', 'Шоколад та цукерки': '🍫', 'Печиво та вафлі': '🧇', 'Жувальні цукерки та льодяники': '🍬', 'Снеки': '🍿',
   'Крупи': '🌾', 'Макаронні вироби': '🍝', 'Бобові': '🫘', 'Сухі сніданки': '🥣',
   'Консерви': '🥫', 'Соуси та кетчупи': '🥫', 'Спеції та приправи': '🌿', 'Трави': '🌿',
+  'Супи': '🥘',
   'Сіль, цукор': '🧂', 'Мед та варення': '🍯', 'Олія та оцет': '🫒', 'Кава': '☕', 'Чай': '🍵', 'Напої': '🥤', 'Вода': '💧', 'Алкоголь': '🍷',
   'Заморожені продукти': '❄️', 'Готові страви': '🍱', 'Дитяче харчування': '🍼', 'Здорове харчування': '💚'
 };
